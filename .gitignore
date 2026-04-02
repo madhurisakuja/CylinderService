@@ -1,0 +1,22 @@
+# Build output
+target/
+*.jar
+*.war
+*.class
+
+# IDE files
+.idea/
+*.iml
+.vscode/
+*.swp
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Env / secrets — never commit these
+.env
+application-local.properties
+
+# Maven wrapper (optional — remove if you use mvnw)
+!.mvn/wrapper/maven-wrapper.jar

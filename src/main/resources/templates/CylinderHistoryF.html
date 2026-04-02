@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="en">
+<head>
+    <title>View History</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <style>
+        body { margin: 0; font-family: Arial, Helvetica, sans-serif; }
+        .topnav { overflow: hidden; background-color: #333; }
+        .topnav a { float: left; color: #f2f2f2; text-align: center; padding: 14px 16px; text-decoration: none; font-size: 17px; }
+        .topnav a:hover { background-color: #ddd; color: black; }
+        .topnav a.active { background-color: #04AA6D; color: white; }
+        .content { background-color: #f2f2f2; padding: 20px; }
+        .right { float: right; }
+        input[type=number] { width: 40%; padding: 12px 20px; margin: 8px 0; border: 1px solid #ccc; box-sizing: border-box; border-radius: 4px; }
+        input[type=submit] { background-color: #04AA6D; color: white; padding: 14px 20px; margin: 8px 0; border: none; cursor: pointer; }
+        input[type=submit]:hover { background-color: #45a049; }
+    </style>
+</head>
+<body>
+<div class="topnav">
+    <a th:href="@{/newhome}">Home</a>
+    <a th:href="@{/newCylinderEntryF}">Make a new Entry</a>
+    <a class="active" th:href="@{/CylinderHistoryF}">View History</a>
+    <a th:href="@{/deleteCylinderEntryF}">Delete an Entry</a>
+    <a th:href="@{/newPartyEntryF}">New Party Entry</a>
+</div>
+
+<div class="content">
+    <a class="right" th:href="@{/notInRotation}">Not in Rotation (15+ days)</a>
+
+    <form th:action="@{/CylinderHistoryF}" th:object="${entry}" method="post">
+        <label>Cylinder Number:</label><br/>
+        <input type="number" th:field="*{cylinderNo}"/><br/><br/>
+        <input type="submit" value="SEARCH"/>
+    </form>
+</div>
+</body>
+</html>
