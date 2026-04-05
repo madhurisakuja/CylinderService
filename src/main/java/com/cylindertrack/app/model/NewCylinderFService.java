@@ -24,14 +24,14 @@ public interface NewCylinderFService extends JpaRepository<MainCylinderEntry, Lo
 
     @Query("select c.id from MainCylinderEntry c " +
            "where c.cylinderNo = ?1 " +
-           "  and CAST(c.date AS date) = CAST(?2 AS date) " +
+           "  and DATE(c.date) = DATE(?2) " +
            "  and c.customerName = ?3 " +
            "  and c.ctype = ?4")
     @Transactional
     List<Long> findByDetails(Long cylinderNo, Date date, String customerName, String ctype);
 
     @Query("select c.cylinderNo, c.date, c.ctype, c.customerName from MainCylinderEntry c " +
-           "where CAST(c.date AS date) <= CAST(?1 AS date) " +
+           "where DATE(c.date) <= DATE(?1) " +
            "  and c.date = (select max(x.date) from MainCylinderEntry x where x.cylinderNo = c.cylinderNo)")
     List<List<?>> getCylindersNotInRotation(Date date);
 }
