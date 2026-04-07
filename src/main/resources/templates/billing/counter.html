@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="en">
+<head>
+    <title>Invoice Counter</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <style>
+        body { margin:0; font-family:Arial,Helvetica,sans-serif; background:#f4f4f4; }
+        .topnav { overflow:hidden; background:#333; }
+        .topnav a { float:left; color:#f2f2f2; padding:14px 16px; text-decoration:none; font-size:17px; }
+        .topnav a:hover { background:#ddd; color:black; }
+        .topnav a.active { background:#04AA6D; color:white; }
+        .content { padding:24px; max-width:500px; margin:0 auto; }
+        h2 { color:#333; border-bottom:2px solid #04AA6D; padding-bottom:8px; }
+        .card { background:white; border-radius:8px; padding:24px; box-shadow:0 1px 4px rgba(0,0,0,.08); }
+        label { display:block; font-size:13px; font-weight:bold; color:#555; margin-bottom:6px; }
+        input[type=number] { padding:10px 14px; border:1px solid #ccc; border-radius:4px; font-size:15px; width:150px; }
+        .btn { padding:10px 24px; border:none; border-radius:4px; cursor:pointer; font-size:15px; font-weight:bold; margin-top:16px; }
+        .btn-green { background:#04AA6D; color:white; }
+        .current { font-size:32px; font-weight:bold; color:#04AA6D; margin-bottom:20px; }
+        .msg-success { background:#d4edda; color:#155724; padding:12px; border-radius:4px; margin-bottom:16px; }
+        .warning { background:#fff3cd; color:#856404; padding:12px; border-radius:4px; margin-top:12px; font-size:13px; }
+    </style>
+</head>
+<body>
+<div class="topnav">
+    <a th:href="@{/newhome}">Home</a>
+    <a th:href="@{/billing/generate}">Generate Bill</a>
+    <a th:href="@{/billing/party-accounts}">Party Accounts</a>
+    <a th:href="@{/billing/prices}">Prices</a>
+    <a th:href="@{/billing/hsn}">HSN Codes</a>
+    <a class="active" th:href="@{/billing/counter}">Invoice Counter</a>
+</div>
+<div class="content">
+    <h2>Invoice Counter</h2>
+    <div th:if="${counterSuccess}" class="msg-success" th:text="${counterSuccess}"></div>
+    <div class="card">
+        <p>Next invoice will be numbered:</p>
+        <div class="current" th:text="${counter.currentNumber} + '/2025-26'"></div>
+        <form th:action="@{/billing/counter}" method="post">
+            <label>Set counter to a specific number</label>
+            <input type="number" name="startNumber" th:value="${counter.currentNumber}" min="1"/>
+            <br/>
+            <button type="submit" class="btn btn-green">Update Counter</button>
+        </form>
+        <div class="warning">
+            Only change this if you need to re-sync with your manual records.
+            Each bill generated automatically increments this by 1. The counter resets to 01 automatically every April (start of new fiscal year).
+        </div>
+    </div>
+</div>
+</body>
+</html>

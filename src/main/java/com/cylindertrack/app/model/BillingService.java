@@ -4,73 +4,148 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import jakarta.transaction.Transactional;
 
 import java.math.BigDecimal;
-import java.time.LocalDate;
-import java.time.format.DateTimeFormatter;
-import java.util.ArrayList;
-import java.util.Date;
-import java.util.List;
-import java.util.Optional;
+import java.time.*;
+import java.util.*;
 
 @Service
 public class BillingService {
 
     private static final Logger log = LoggerFactory.getLogger(BillingService.class);
     private static final BigDecimal DEFAULT_PRICE = new BigDecimal("100.00");
-    private static final DateTimeFormatter BILL_NUM_FMT = DateTimeFormatter.ofPattern("yyyyMM");
+    private static final ZoneId IST = ZoneId.of("Asia/Kolkata");
 
-    @Autowired private BillingRepository billingRepository;
-    @Autowired private CylinderPriceRepository priceRepository;
-    @Autowired private PartyPriceRepository partyPriceRepository;
+    // 2026 GST state code → state name mapping
+    public static final Map<String, String> STATE_CODES = new LinkedHashMap<>();
+    static {
+        STATE_CODES.put("01", "Jammu & Kashmir");
+        STATE_CODES.put("02", "Himachal Pradesh");
+        STATE_CODES.put("03", "Punjab");
+        STATE_CODES.put("04", "Chandigarh");
+        STATE_CODES.put("05", "Uttarakhand");
+        STATE_CODES.put("06", "Haryana");
+        STATE_CODES.put("07", "Delhi");
+        STATE_CODES.put("08", "Rajasthan");
+        STATE_CODES.put("09", "Uttar Pradesh");
+        STATE_CODES.put("10", "Bihar");
+        STATE_CODES.put("19", "West Bengal");
+        STATE_CODES.put("20", "Jharkhand");
+        STATE_CODES.put("21", "Odisha");
+        STATE_CODES.put("22", "Chhattisgarh");
+        STATE_CODES.put("23", "Madhya Pradesh");
+        STATE_CODES.put("24", "Gujarat");
+        STATE_CODES.put("27", "Maharashtra");
+        STATE_CODES.put("29", "Karnataka");
+        STATE_CODES.put("32", "Kerala");
+        STATE_CODES.put("33", "Tamil Nadu");
+        STATE_CODES.put("36", "Telangana");
+        STATE_CODES.put("37", "Andhra Pradesh");
+    }
 
     /**
-     * Builds a complete bill for the given party and date range.
-     * Discount is applied as a flat amount (not shown to other parties).
+     * Extracts the 2-digit state code from a GSTIN and returns the state name.
+     * Returns null if GSTIN is blank or unrecognised.
      */
-    public BillSummary generateBill(String partyName, Date fromDate, Date toDate,
-                                    BigDecimal discountAmount) {
-        List<Object[]> rows = billingRepository.findBillableEntries(partyName, fromDate, toDate);
+    public static String stateNameFromGstin(String gstin) {
+        if (gstin == null || gstin.trim().length() < 2) return null;
+        String code = gstin.trim().substring(0, 2);
+        return STATE_CODES.get(code);
+    }
+
+    public static String stateCodeFromGstin(String gstin) {
+        if (gstin == null || gstin.trim().length() < 2) return null;
+        return gstin.trim().substring(0, 2);
+    }
+
+    @Autowired private BillingRepository        billingRepository;
+    @Autowired private CylinderPriceRepository  priceRepository;
+    @Autowired private PartyPriceRepository     partyPriceRepository;
+    @Autowired private PartyAccountRepository   partyAccountRepository;
+    @Autowired private HsnCodeRepository        hsnCodeRepository;
+    @Autowired private InvoiceCounterRepository invoiceCounterRepository;
+
+    @Transactional
+    public BillSummary generateBill(String partyName, int year, int month,
+                                    BigDecimal discountAmount,
+                                    BigDecimal securityDeposit,
+                                    BigDecimal tcCharge) {
+
+        Date[] range  = monthRange(year, month);
+        Date fromDate = range[0];
+        Date toDate   = range[1];
+
+        List<Object[]> rows = billingRepository.findBillableEntriesGrouped(partyName, fromDate, toDate);
+
         List<BillLineItem> lineItems = new ArrayList<>();
-
+        int sl = 1;
         for (Object[] row : rows) {
-            Date date       = (Date)   row[0];
-            Long cylinderNo = (Long)   row[1];
-            String gasType  = (String) row[2];
-
-            // Resolve price: party-specific first, fall back to default
-            BigDecimal price = resolvePrice(partyName, gasType);
-            boolean isPartySpecific = partyPriceRepository
-                    .findByPartyNameAndGasType(partyName, gasType).isPresent();
-
-            lineItems.add(new BillLineItem(date, cylinderNo, gasType, price, isPartySpecific));
+            String gasType  = (String) row[0];
+            int qty         = ((Number) row[1]).intValue();
+            BigDecimal rate = resolvePrice(partyName, gasType);
+            String hsn      = hsnCodeRepository.findByGasType(gasType)
+                                .map(HsnCode::getHsnCode).orElse("");
+            lineItems.add(new BillLineItem(sl++, gasType, hsn, qty, rate));
         }
 
-        String billNumber = "INV-" + BILL_NUM_FMT.format(LocalDate.now()) +
-                            "-" + Math.abs(partyName.hashCode() % 9000 + 1000);
+        int billFiscalStart = (month >= 4) ? year : year - 1;
 
-        log.info("Bill generated for party={} entries={} discount={}",
-                partyName, lineItems.size(), discountAmount);
+        InvoiceCounter counter = invoiceCounterRepository.findById(1)
+            .orElseGet(() -> {
+                InvoiceCounter c = new InvoiceCounter();
+                c.setFiscalStartYear(billFiscalStart);
+                return invoiceCounterRepository.save(c);
+            });
 
-        return new BillSummary(partyName, fromDate, toDate, lineItems, discountAmount, billNumber);
+        if (!counter.getFiscalStartYear().equals(billFiscalStart)) {
+            log.info("New fiscal year detected (stored={}, bill={}). Resetting invoice counter to 1.",
+                     counter.getFiscalStartYear(), billFiscalStart);
+            invoiceCounterRepository.resetForNewFiscalYear(billFiscalStart);
+            counter.setCurrentNumber(1);
+            counter.setFiscalStartYear(billFiscalStart);
+        }
+
+        int invoiceNum = counter.getCurrentNumber();
+        invoiceCounterRepository.increment();
+
+        String fiscalYear    = billFiscalStart + "-" + String.valueOf(billFiscalStart + 1).substring(2);
+        String invoiceNumber = String.format("%02d", invoiceNum) + "/" + fiscalYear;
+
+        // Resolve party account — auto-fill state from GSTIN if not already set
+        PartyAccount account = partyAccountRepository.findByPartyName(partyName).orElse(null);
+        if (account != null && account.getGstin() != null && !account.getGstin().isBlank()) {
+            if (account.getStateCode() == null || account.getStateCode().isBlank()) {
+                account.setStateCode(stateCodeFromGstin(account.getGstin()));
+            }
+            if (account.getStateName() == null || account.getStateName().isBlank()) {
+                account.setStateName(stateNameFromGstin(account.getGstin()));
+            }
+        }
+
+        log.info("Bill generated: invoice={} party={} items={}", invoiceNumber, partyName, lineItems.size());
+
+        return new BillSummary(partyName, account, toDate, invoiceNumber, fiscalYear,
+                               lineItems, discountAmount, securityDeposit, tcCharge);
     }
 
-    /**
-     * Resolves the effective price for a party + gas type.
-     * Party-specific price wins; falls back to default; falls back to ₹100.
-     */
+    public Date[] monthRange(int year, int month) {
+        LocalDate first = LocalDate.of(year, month, 1);
+        LocalDate last  = first.withDayOfMonth(first.lengthOfMonth());
+        return new Date[]{
+            Date.from(first.atStartOfDay(IST).toInstant()),
+            Date.from(last.atTime(23, 59, 59).atZone(IST).toInstant())
+        };
+    }
+
     public BigDecimal resolvePrice(String partyName, String gasType) {
-        Optional<PartyPrice> partyPrice =
-                partyPriceRepository.findByPartyNameAndGasType(partyName, gasType);
-        if (partyPrice.isPresent()) return partyPrice.get().getPrice();
-
-        Optional<CylinderPrice> defaultPrice = priceRepository.findByGasType(gasType);
-        return defaultPrice.map(CylinderPrice::getPrice).orElse(DEFAULT_PRICE);
+        return partyPriceRepository.findByPartyNameAndGasType(partyName, gasType)
+                .map(PartyPrice::getPrice)
+                .orElseGet(() -> priceRepository.findByGasType(gasType)
+                        .map(CylinderPrice::getPrice)
+                        .orElse(DEFAULT_PRICE));
     }
 
-    /**
-     * Seeds default prices of ₹100 for all gas types if none exist yet.
-     */
     public void seedDefaultPricesIfEmpty() {
         if (priceRepository.count() == 0) {
             for (CylinderTypeF type : CylinderTypeF.values()) {
@@ -80,6 +155,36 @@ public class BillingService {
                 priceRepository.save(p);
             }
             log.info("Seeded default cylinder prices at ₹100 each");
+        }
+        if (invoiceCounterRepository.count() == 0) {
+            InvoiceCounter c = new InvoiceCounter();
+            LocalDate now = LocalDate.now(IST);
+            c.setFiscalStartYear(now.getMonthValue() >= 4 ? now.getYear() : now.getYear() - 1);
+            invoiceCounterRepository.save(c);
+            log.info("Seeded invoice counter starting at 01");
+        }
+        seedHsnCodesIfEmpty();
+    }
+
+    private void seedHsnCodesIfEmpty() {
+        if (hsnCodeRepository.count() == 0) {
+            Map<String, String[]> hsn = new LinkedHashMap<>();
+            // gasType → [hsnCode, description]
+            hsn.put("OXY",        new String[]{"28044090", "OXYGEN"});
+            hsn.put("LPG",        new String[]{"27111900", "LPG 19KG"});
+            hsn.put("DA",         new String[]{"29012910", "DA Gas"});
+            hsn.put("ARGON",      new String[]{"997319",   "SAC"});
+            hsn.put("NITROGEN",   new String[]{"28043000", "NITROGEN"});
+            hsn.put("ARGOSHIELD", new String[]{"28042100", "ARGOSHIELD"});
+            hsn.put("CO2",        new String[]{"28112190", "CO2"});
+            hsn.forEach((type, vals) -> {
+                HsnCode h = new HsnCode();
+                h.setGasType(type);
+                h.setHsnCode(vals[0]);
+                h.setDescription(vals[1]);
+                hsnCodeRepository.save(h);
+            });
+            log.info("Seeded HSN codes for all gas types");
         }
     }
 }

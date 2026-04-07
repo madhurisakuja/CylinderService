@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="en">
+<head>
+    <title>Party Account Details</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <style>
+        body { margin:0; font-family:Arial,Helvetica,sans-serif; background:#f4f4f4; }
+        .topnav { overflow:hidden; background:#333; }
+        .topnav a { float:left; color:#f2f2f2; padding:14px 16px; text-decoration:none; font-size:17px; }
+        .topnav a:hover { background:#ddd; color:black; }
+        .topnav a.active { background:#04AA6D; color:white; }
+        .content { padding:24px; max-width:900px; margin:0 auto; }
+        h2 { color:#333; border-bottom:2px solid #04AA6D; padding-bottom:8px; }
+        h3 { color:#555; margin-top:24px; }
+        .card { background:white; border-radius:8px; padding:20px; margin-bottom:20px; box-shadow:0 1px 4px rgba(0,0,0,.08); }
+        label { display:block; font-size:13px; font-weight:bold; color:#555; margin-bottom:4px; margin-top:12px; }
+        input[type=text], textarea, select { width:100%; padding:10px 12px; border:1px solid #ccc; border-radius:4px; font-size:14px; box-sizing:border-box; }
+        textarea { height:80px; resize:vertical; }
+        .btn { padding:10px 24px; border:none; border-radius:4px; cursor:pointer; font-size:15px; font-weight:bold; }
+        .btn-green { background:#04AA6D; color:white; margin-top:16px; }
+        .btn-green:hover { background:#038a57; }
+        .msg-success { background:#d4edda; color:#155724; padding:12px; border-radius:4px; margin-bottom:16px; }
+        table { width:100%; border-collapse:collapse; font-size:13px; }
+        th { background:#04AA6D; color:white; padding:8px 10px; text-align:left; }
+        td { padding:8px 10px; border-bottom:1px solid #eee; }
+        .form-row { display:grid; grid-template-columns:1fr 1fr; gap:16px; }
+        .state-badge { display:inline-block; background:#e8f5e9; color:#2e7d32; padding:4px 10px; border-radius:4px; font-size:13px; margin-top:4px; }
+        .hint { font-size:12px; color:#888; margin-top:3px; }
+    </style>
+    <script th:inline="javascript">
+        // State code map injected from server
+        const STATE_CODES = /*[[${stateCodes}]]*/ {};
+
+        function onGstinInput(val) {
+            val = val.trim().toUpperCase();
+            if (val.length >= 2) {
+                const code = val.substring(0, 2);
+                const name = STATE_CODES[code];
+                if (name) {
+                    document.getElementById('stateCode').value = code;
+                    document.getElementById('stateName').value = name;
+                    document.getElementById('stateDisplay').textContent = code + ' — ' + name;
+                    document.getElementById('stateDisplay').style.display = 'inline-block';
+                } else {
+                    document.getElementById('stateDisplay').style.display = 'none';
+                }
+            }
+        }
+
+        function loadParty(name) {
+            if (name) window.location.href = '/billing/party-accounts?party=' + encodeURIComponent(name);
+        }
+    </script>
+</head>
+<body>
+<div class="topnav">
+    <a th:href="@{/newhome}">Home</a>
+    <a th:href="@{/newCylinderEntryF}">New Entry</a>
+    <a th:href="@{/billing/generate}">Generate Bill</a>
+    <a class="active" th:href="@{/billing/party-accounts}">Party Accounts</a>
+    <a th:href="@{/billing/prices}">Prices</a>
+    <a th:href="@{/billing/hsn}">HSN Codes</a>
+    <a th:href="@{/billing/counter}">Invoice Counter</a>
+</div>
+<div class="content">
+    <h2>Party Account Details</h2>
+    <div th:if="${saveSuccess}" class="msg-success" th:text="${saveSuccess}"></div>
+
+    <div class="card">
+        <label>Select Party to Edit</label>
+        <select onchange="loadParty(this.value)" style="width:300px">
+            <option value="">-- Select existing --</option>
+            <option th:each="p : ${partyNames}" th:value="${p}" th:text="${p}"
+                    th:selected="${p == partyAccount.partyName}"></option>
+        </select>
+
+        <form th:action="@{/billing/party-accounts}" th:object="${partyAccount}" method="post">
+            <label>Party Name *</label>
+            <select th:field="*{partyName}" required style="width:300px">
+                <option value="">-- Select Party --</option>
+                <option th:each="p : ${partyNames}" th:value="${p}" th:text="${p}"></option>
+            </select>
+
+            <label>Address</label>
+            <textarea th:field="*{address}" placeholder="Full address — will appear on bill exactly as entered"></textarea>
+
+            <label>Phone</label>
+            <input type="text" th:field="*{phone}" placeholder="+91 98765 43210"/>
+
+            <label>GSTIN</label>
+            <input type="text" th:field="*{gstin}"
+                   placeholder="e.g. 20AAYPA3587C1ZV"
+                   maxlength="15"
+                   oninput="onGstinInput(this.value)"
+                   th:onload="'onGstinInput(\'' + *{gstin} + '\')'"
+                   autocomplete="off"/>
+            <span id="stateDisplay" class="state-badge"
+                  th:style="${partyAccount.stateCode != null and !#strings.isEmpty(partyAccount.stateCode)} ? 'display:inline-block' : 'display:none'"
+                  th:text="${partyAccount.stateCode} + ' — ' + ${partyAccount.stateName}"></span>
+            <p class="hint">State code and name are filled automatically from the first 2 digits of the GSTIN.</p>
+
+            <!-- Hidden fields — auto-filled by JS, can be overridden -->
+            <div class="form-row" style="margin-top:8px">
+                <div>
+                    <label>State Code <span style="color:#999;font-weight:normal">(auto-filled)</span></label>
+                    <input type="text" id="stateCode" th:field="*{stateCode}" placeholder="e.g. 20" maxlength="5"/>
+                </div>
+                <div>
+                    <label>State Name <span style="color:#999;font-weight:normal">(auto-filled)</span></label>
+                    <input type="text" id="stateName" th:field="*{stateName}" placeholder="e.g. JHARKHAND"/>
+                </div>
+            </div>
+
+            <button type="submit" class="btn btn-green">Save Details</button>
+        </form>
+    </div>
+
+    <!-- All registered parties -->
+    <div class="card" th:if="${not #lists.isEmpty(allAccounts)}">
+        <h3>All Registered Parties</h3>
+        <table>
+            <thead>
+                <tr><th>Party</th><th>GSTIN</th><th>State</th><th>Phone</th><th>Address</th></tr>
+            </thead>
+            <tbody>
+                <tr th:each="a : ${allAccounts}">
+                    <td><a th:href="@{/billing/party-accounts(party=${a.partyName})}"
+                           th:text="${a.partyName}" style="color:#04AA6D;text-decoration:none"></a></td>
+                    <td th:text="${a.gstin}"></td>
+                    <td th:text="${a.stateCode} + (${a.stateName} != null ? ' ' + ${a.stateName} : '')"></td>
+                    <td th:text="${a.phone}"></td>
+                    <td th:text="${a.address}" style="max-width:200px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis"></td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+</div>
+</body>
+</html>
