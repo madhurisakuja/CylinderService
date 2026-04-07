@@ -139,7 +139,7 @@ public class ExcelBillGenerator {
             String[] headers = {"SL NO","Particulars","HSN code","GST %","Quantity","Rate",
                                 "Taxable","CGST Amt","SGST Amt","AMOUNT"};
             for (int i = 0; i < headers.length; i++) {
-                XSSFCell c = hdr.createCell(i);
+                XSSFCell c = (XSSFCell) hdr.createCell(i);
                 c.setCellValue(headers[i]);
                 c.setCellStyle(hdrStyle);
             }
