@@ -1,44 +1,66 @@
 <!DOCTYPE html>
 <html xmlns:th="http://www.thymeleaf.org" lang="en">
 <head>
-    <title>New Party Entry</title>
+    <title>Party Management</title>
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <style>
-        body { margin: 0; font-family: Arial, Helvetica, sans-serif; }
-        .topnav { overflow: hidden; background-color: #333; }
-        .topnav a { float: left; color: #f2f2f2; text-align: center; padding: 14px 16px; text-decoration: none; font-size: 17px; }
-        .topnav a:hover { background-color: #ddd; color: black; }
-        .topnav a.active { background-color: #04AA6D; color: white; }
-        .content { background-color: #f2f2f2; padding: 20px; }
-        input[type=text] { width: 40%; padding: 12px 20px; margin: 8px 0; border: 1px solid #ccc; box-sizing: border-box; border-radius: 4px; }
-        input[type=submit] { background-color: #04AA6D; color: white; padding: 14px 20px; margin: 8px 0; border: none; cursor: pointer; }
-        input[type=submit]:hover { background-color: #45a049; }
-        .msg-success { color: #155724; background-color: #d4edda; padding: 10px; border-radius: 4px; margin-bottom: 10px; }
-        .msg-error   { color: #721c24; background-color: #f8d7da; padding: 10px; border-radius: 4px; margin-bottom: 10px; }
+        body{margin:0;font-family:Arial,Helvetica,sans-serif;background:#f4f4f4;}
+        .topnav{overflow:hidden;background:#1a1a2e;}
+        .topnav a{float:left;color:#eee;padding:14px 16px;text-decoration:none;font-size:15px;}
+        .topnav a:hover{background:#16213e;color:#04AA6D;}
+        .topnav a.active{background:#04AA6D;color:white;}
+        .content{padding:24px;max-width:700px;margin:0 auto;}
+        h2{color:#1a1a2e;}
+        .card{background:white;border-radius:10px;padding:24px;box-shadow:0 2px 8px rgba(0,0,0,.07);margin-bottom:16px;}
+        label{display:block;font-size:13px;font-weight:bold;color:#555;margin-bottom:4px;}
+        input[type=text]{padding:10px 12px;border:1px solid #ccc;border-radius:4px;font-size:14px;width:100%;box-sizing:border-box;}
+        .btn{padding:10px 24px;border:none;border-radius:4px;cursor:pointer;font-size:14px;font-weight:bold;margin-top:12px;}
+        .btn-green{background:#04AA6D;color:white;}
+        .btn-green:hover{background:#038a57;}
+        .msg-success{background:#d4edda;color:#155724;padding:10px;border-radius:4px;margin-bottom:12px;}
+        .msg-error{background:#f8d7da;color:#721c24;padding:10px;border-radius:4px;margin-bottom:12px;}
+        table{width:100%;border-collapse:collapse;font-size:13px;}
+        th{background:#04AA6D;color:white;padding:8px 10px;text-align:left;}
+        td{padding:8px 10px;border-bottom:1px solid #eee;}
+        .hint{font-size:12px;color:#888;margin-top:6px;}
     </style>
 </head>
 <body>
 <div class="topnav">
     <a th:href="@{/newhome}">Home</a>
-    <a th:href="@{/newCylinderEntryF}">Make a new Entry</a>
-    <a th:href="@{/CylinderHistoryF}">View History</a>
-    <a th:href="@{/deleteCylinderEntryF}">Delete an Entry</a>
-    <a class="active" th:href="@{/newPartyEntryF}">New Party Entry</a>
+    <a th:href="@{/newEntryF}">New Entry</a>
+    <a th:href="@{/purchaseEntryF}">Purchase</a>
+    <a th:href="@{/cylinderNumbers}">Cylinder Numbers</a>
+    <a th:href="@{/historyHolding}">History</a>
+    <a th:href="@{/deleteEntryF}">Delete</a>
+    <a class="active" th:href="@{/newPartyEntryF}">Parties</a>
+    <a th:href="@{/billing/generate}">Billing</a>
 </div>
-
 <div class="content">
-    <div th:if="${entrySuccess != null and entrySuccess}" class="msg-success">
-        Successfully registered party: <strong th:text="${partyName}"></strong>
-    </div>
-    <div th:if="${entrySuccess != null and !entrySuccess}" class="msg-error">
-        Duplicate party — already exists: <strong th:text="${partyName}"></strong>
+    <h2>Party Management</h2>
+    <div th:if="${entrySuccess != null and entrySuccess}" class="msg-success">Registered: <strong th:text="${partyName}"></strong></div>
+    <div th:if="${entrySuccess != null and !entrySuccess}" class="msg-error">Duplicate: <strong th:text="${partyName}"></strong> already exists.</div>
+
+    <div class="card">
+        <form th:action="@{/newPartyEntryF}" th:object="${entryParty}" method="post">
+            <label>Party Name</label>
+            <input type="text" th:field="*{partyName}" placeholder="e.g. SHARMA GAS AGENCY" required/>
+            <p class="hint">For purchase/supplier parties, start the name with "1" (e.g. "1-AIR PRODUCTS").</p>
+            <button type="submit" class="btn btn-green">Register Party</button>
+        </form>
     </div>
 
-    <form th:action="@{/newPartyEntryF}" th:object="${entryParty}" method="post">
-        <label>Party Name:</label><br/>
-        <input type="text" th:field="*{partyName}" /><br/><br/>
-        <input type="submit" value="SUBMIT"/>
-    </form>
+    <div class="card" th:if="${not #lists.isEmpty(allParties)}">
+        <table>
+            <thead><tr><th>Party Name</th><th>Type</th></tr></thead>
+            <tbody>
+                <tr th:each="p : ${allParties}">
+                    <td th:text="${p}"></td>
+                    <td th:text="${#strings.startsWith(p,'1') ? 'Purchaser/Supplier' : 'Customer'}"></td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
 </div>
 </body>
 </html>

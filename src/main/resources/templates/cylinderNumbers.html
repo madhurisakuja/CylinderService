@@ -1,0 +1,237 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="en">
+<head>
+    <title>Cylinder Numbers</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <style>
+        body{margin:0;font-family:Arial,Helvetica,sans-serif;background:#f4f4f4;}
+        .topnav{overflow:hidden;background:#1a1a2e;}
+        .topnav a{float:left;color:#eee;padding:14px 16px;text-decoration:none;font-size:15px;}
+        .topnav a:hover{background:#16213e;color:#04AA6D;}
+        .topnav a.active{background:#04AA6D;color:white;}
+        .content{padding:24px;max-width:960px;margin:0 auto;}
+        h2{color:#1a1a2e;}
+        .card{background:white;border-radius:10px;padding:24px;box-shadow:0 2px 8px rgba(0,0,0,.07);margin-bottom:16px;}
+        label{display:block;font-size:13px;font-weight:bold;color:#555;margin-bottom:4px;}
+        select,input[type=text],input[type=date],input[type=number]{padding:9px 12px;border:1px solid #ccc;border-radius:4px;font-size:14px;box-sizing:border-box;}
+        .filter-row{display:grid;grid-template-columns:1fr 1fr auto;gap:12px;align-items:end;}
+        .btn{padding:10px 22px;border:none;border-radius:4px;cursor:pointer;font-size:14px;font-weight:bold;}
+        .btn-green{background:#04AA6D;color:white;}
+        .btn-green:hover{background:#038a57;}
+        .btn-blue{background:#1a73e8;color:white;}
+        .btn-blue:hover{background:#1557b0;}
+        .type-section{margin-bottom:20px;}
+        .type-header{font-size:14px;font-weight:bold;background:#f0faf5;border-left:4px solid #04AA6D;padding:8px 12px;border-radius:0 4px 4px 0;margin-bottom:10px;}
+        .type-header.empty-type{background:#fff8e1;border-left-color:#cc7000;}
+        .cyl-row{display:grid;gap:10px;align-items:center;margin-bottom:8px;}
+        .cyl-row.full-row{grid-template-columns:120px 180px 1fr;}
+        .cyl-row.empty-row{grid-template-columns:120px 240px 1fr;}
+        .cyl-label{font-size:13px;color:#555;font-weight:bold;}
+        .warn-msg{color:#cc7000;font-size:12px;margin-top:2px;}
+        .msg-success{background:#d4edda;color:#155724;padding:10px;border-radius:4px;margin-bottom:12px;}
+        .msg-error{background:#f8d7da;color:#721c24;padding:10px;border-radius:4px;margin-bottom:12px;}
+        .hint{font-size:12px;color:#888;text-align:center;padding:20px;}
+        #result-area{display:none;}
+    </style>
+</head>
+<body>
+<div class="topnav">
+    <a th:href="@{/newhome}">Home</a>
+    <a th:href="@{/newEntryF}">New Entry</a>
+    <a th:href="@{/purchaseEntryF}">Purchase</a>
+    <a class="active" th:href="@{/cylinderNumbers}">Cylinder Numbers</a>
+    <a th:href="@{/historyHolding}">History</a>
+    <a th:href="@{/deleteEntryF}">Delete</a>
+    <a th:href="@{/newPartyEntryF}">Parties</a>
+    <a th:href="@{/billing/generate}">Billing</a>
+</div>
+<div class="content">
+    <h2>Cylinder Numbers</h2>
+    <div class="card">
+        <div class="filter-row">
+            <div>
+                <label>Party</label>
+                <select id="filterParty" style="width:100%">
+                    <option value="">-- Select Party --</option>
+                    <option th:each="p : ${partyNames}" th:value="${p}" th:text="${p}"></option>
+                </select>
+            </div>
+            <div>
+                <label>Date of Entry</label>
+                <input type="date" id="filterDate" style="width:100%"/>
+            </div>
+            <div>
+                <label>&nbsp;</label>
+                <button class="btn btn-blue" onclick="loadEntries()">Load</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="hint" id="hintMsg">Select a party and date then click Load to see the entry forms.</div>
+
+    <div id="formsArea"></div>
+
+    <div id="result-area">
+        <div id="result-content"></div>
+    </div>
+    <div id="submitBtnArea" style="display:none;margin-top:8px">
+        <button class="btn btn-green" onclick="saveAll()">Save Cylinder Numbers</button>
+    </div>
+</div>
+<script>
+let pendingRows = [];
+
+async function loadEntries() {
+    const party = document.getElementById('filterParty').value;
+    const date  = document.getElementById('filterDate').value;
+    if (!party || !date) { alert('Select both party and date.'); return; }
+
+    const resp = await fetch(`/cylinderNumbers/load?partyName=${encodeURIComponent(party)}&date=${date}`);
+    const data = await resp.json();
+
+    document.getElementById('hintMsg').style.display = 'none';
+    const area = document.getElementById('formsArea');
+    area.innerHTML = '';
+    pendingRows = [];
+
+    if (!data.entries.length) {
+        area.innerHTML = '<div class="hint">No bulk entries found for this party and date. Make a New Entry first.</div>';
+        document.getElementById('submitBtnArea').style.display = 'none';
+        return;
+    }
+
+    for (const entry of data.entries) {
+        const fullAtParty = data.fullAtParty[entry.ctype] || [];
+
+        // FULL rows
+        if (entry.cfull > 0) {
+            const sec = document.createElement('div');
+            sec.className = 'type-section';
+            sec.innerHTML = `<div class="type-header">${entry.ctype} — ${entry.cfull} Full</div>`;
+            for (let i = 0; i < entry.cfull; i++) {
+                const rowId = `full_${entry.ctype}_${i}`;
+                const div = document.createElement('div');
+                div.className = 'cyl-row full-row';
+                div.innerHTML = `
+                    <span class="cyl-label">${entry.ctype} Full #${i+1}</span>
+                    <input type="number" id="${rowId}" placeholder="Cylinder No." min="1"
+                           oninput="checkFullDuplicate(this, '${entry.ctype}', '${party}')"/>
+                    <span class="warn-msg" id="${rowId}_warn"></span>
+                `;
+                sec.appendChild(div);
+                pendingRows.push({el: rowId, party, date: entry.date, ctype: entry.ctype, status: 'FULL'});
+            }
+            area.appendChild(sec);
+        }
+
+        // EMPTY rows
+        if (entry.cempty > 0) {
+            const sec = document.createElement('div');
+            sec.className = 'type-section';
+            sec.innerHTML = `<div class="type-header empty-type">${entry.ctype} — ${entry.cempty} Empty Returns</div>`;
+            for (let i = 0; i < entry.cempty; i++) {
+                const rowId = `empty_${entry.ctype}_${i}`;
+                const div = document.createElement('div');
+                div.className = 'cyl-row empty-row';
+
+                let inputHtml;
+                if (fullAtParty.length > 0) {
+                    inputHtml = `<select id="${rowId}" onchange="checkEmptyMismatch(this, '${party}')">
+                        <option value="">-- Select Cylinder --</option>
+                        ${fullAtParty.map(c => `<option value="${c}">${c}</option>`).join('')}
+                        <option value="__new__">Other (enter manually)</option>
+                    </select>
+                    <input type="number" id="${rowId}_manual" placeholder="Cylinder No." min="1"
+                           style="display:none;margin-top:6px" oninput="checkNewEntry(this,'${party}','${entry.ctype}')"/>`;
+                } else {
+                    inputHtml = `<input type="number" id="${rowId}" placeholder="Cylinder No." min="1"
+                                  oninput="checkNewEntry(this,'${party}','${entry.ctype}')"/>`;
+                }
+                div.innerHTML = `
+                    <span class="cyl-label">${entry.ctype} Empty #${i+1}</span>
+                    ${inputHtml}
+                    <span class="warn-msg" id="${rowId}_warn"></span>
+                `;
+                sec.appendChild(div);
+                pendingRows.push({el: rowId, party, date: entry.date, ctype: entry.ctype, status: 'EMPTY'});
+            }
+            area.appendChild(sec);
+        }
+    }
+    document.getElementById('submitBtnArea').style.display = 'block';
+}
+
+function checkFullDuplicate(input, ctype, party) {
+    const warn = document.getElementById(input.id + '_warn');
+    // Warning shown server-side on save; clear on input
+    warn.textContent = '';
+}
+
+function checkEmptyMismatch(sel, party) {
+    const warn = document.getElementById(sel.id + '_warn');
+    const manual = document.getElementById(sel.id + '_manual');
+    if (sel.value === '__new__') {
+        manual.style.display = 'block';
+        warn.textContent = `⚠ This is a new entry for a full not supplied to ${party}.`;
+    } else {
+        if (manual) manual.style.display = 'none';
+        warn.textContent = '';
+    }
+}
+
+function checkNewEntry(input, party, ctype) {
+    const warn = document.getElementById(input.id.replace('_manual','') + '_warn');
+    if (input.value) warn.textContent = `⚠ Cylinder ${input.value} — verify it was sent as FULL to ${party}.`;
+    else warn.textContent = '';
+}
+
+async function saveAll() {
+    const rows = [];
+    for (const r of pendingRows) {
+        const el = document.getElementById(r.el);
+        let cylinderNo = '';
+        if (el.tagName === 'SELECT') {
+            if (el.value === '__new__') {
+                const manual = document.getElementById(r.el + '_manual');
+                cylinderNo = manual ? manual.value.trim() : '';
+            } else {
+                cylinderNo = el.value;
+            }
+        } else {
+            cylinderNo = el.value.trim();
+        }
+        if (!cylinderNo) continue;
+        rows.push({cylinderNo, partyName: r.party, ctype: r.ctype, date: r.date, status: r.status});
+    }
+
+    if (!rows.length) { alert('No cylinder numbers entered.'); return; }
+
+    const resp = await fetch('/cylinderNumbers/save', {
+        method: 'POST',
+        headers: {'Content-Type':'application/json'},
+        body: JSON.stringify(rows)
+    });
+    const data = await resp.json();
+
+    const area = document.getElementById('result-area');
+    area.style.display = 'block';
+    let html = '';
+    if (data.saved > 0) html += `<div class="msg-success">${data.saved} cylinder number(s) saved.</div>`;
+    for (const w of data.warnings) {
+        if (w.startsWith('DUPLICATE_FULL:')) {
+            const [,cno,others] = w.split(':');
+            html += `<div class="msg-error">⚠ Cylinder ${cno}: last entry was also FULL.
+                ${others ? 'Cylinders currently empty at party: ' + others : 'No empty cylinders found at party.'}
+                Please verify before proceeding.</div>`;
+        } else if (w.startsWith('PARTY_MISMATCH:')) {
+            const [,cno,prev,curr] = w.split(':');
+            html += `<div class="msg-error">⚠ Cylinder ${cno} was last with <b>${prev}</b>, now being returned by <b>${curr}</b>.</div>`;
+        } else {
+            html += `<div class="msg-error">${w}</div>`;
+        }
+    }
+    document.getElementById('result-content').innerHTML = html;
+}
+</script>
+</body>
+</html>

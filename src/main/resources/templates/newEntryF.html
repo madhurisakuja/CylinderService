@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="en">
+<head>
+    <title>New Entry</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <style>
+        body{margin:0;font-family:Arial,Helvetica,sans-serif;background:#f4f4f4;}
+        .topnav{overflow:hidden;background:#1a1a2e;}
+        .topnav a{float:left;color:#eee;padding:14px 16px;text-decoration:none;font-size:15px;}
+        .topnav a:hover{background:#16213e;color:#04AA6D;}
+        .topnav a.active{background:#04AA6D;color:white;}
+        .content{padding:24px;max-width:900px;margin:0 auto;}
+        h2{color:#1a1a2e;}
+        .card{background:white;border-radius:10px;padding:24px;box-shadow:0 2px 8px rgba(0,0,0,.07);margin-bottom:20px;}
+        label{display:block;font-size:13px;font-weight:bold;color:#555;margin-bottom:4px;}
+        select,input[type=text],input[type=date],input[type=number]{padding:9px 12px;border:1px solid #ccc;border-radius:4px;font-size:14px;width:100%;box-sizing:border-box;}
+        .row-grid{display:grid;grid-template-columns:180px 80px 80px 1fr 36px;gap:10px;align-items:end;margin-bottom:10px;}
+        .row-header{display:grid;grid-template-columns:180px 80px 80px 1fr 36px;gap:10px;margin-bottom:4px;}
+        .row-header span{font-size:12px;font-weight:bold;color:#888;text-transform:uppercase;}
+        .btn{padding:10px 22px;border:none;border-radius:4px;cursor:pointer;font-size:14px;font-weight:bold;}
+        .btn-green{background:#04AA6D;color:white;}
+        .btn-green:hover{background:#038a57;}
+        .btn-outline{background:white;border:1px solid #04AA6D;color:#04AA6D;}
+        .btn-outline:hover{background:#e8f5e9;}
+        .btn-remove{background:#eee;border:none;border-radius:50%;width:30px;height:30px;cursor:pointer;font-size:16px;color:#888;}
+        .btn-remove:hover{background:#f8d7da;color:#cc0000;}
+        .section-title{font-size:13px;font-weight:bold;color:#04AA6D;text-transform:uppercase;letter-spacing:.5px;margin-bottom:12px;}
+        .msg-success{background:#d4edda;color:#155724;padding:12px;border-radius:4px;margin-bottom:16px;}
+        .msg-error{background:#f8d7da;color:#721c24;padding:12px;border-radius:4px;margin-bottom:16px;}
+        .top-row{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:20px;}
+        .toggle-empty{display:flex;align-items:center;gap:8px;margin-bottom:12px;font-size:14px;cursor:pointer;}
+        .empty-section{display:none;}
+        .empty-section.visible{display:block;}
+        #result-box{display:none;margin-top:16px;}
+    </style>
+</head>
+<body>
+<div class="topnav">
+    <a th:href="@{/newhome}">Home</a>
+    <a class="active" th:href="@{/newEntryF}">New Entry</a>
+    <a th:href="@{/purchaseEntryF}">Purchase</a>
+    <a th:href="@{/cylinderNumbers}">Cylinder Numbers</a>
+    <a th:href="@{/historyHolding}">History</a>
+    <a th:href="@{/deleteEntryF}">Delete</a>
+    <a th:href="@{/newPartyEntryF}">Parties</a>
+    <a th:href="@{/billing/generate}">Billing</a>
+</div>
+<div class="content">
+    <h2>New Sales Entry</h2>
+
+    <div class="card">
+        <div class="top-row">
+            <div>
+                <label>Party Name</label>
+                <select id="partyName">
+                    <option value="">-- Select Party --</option>
+                    <option th:each="p : ${partyNames}" th:value="${p}" th:text="${p}"></option>
+                </select>
+            </div>
+            <div>
+                <label>Date</label>
+                <input type="date" id="entryDate" th:value="${defaultDate}"/>
+            </div>
+        </div>
+
+        <!-- Full cylinders section -->
+        <div class="section-title">Full Cylinders Sent Out</div>
+        <div class="row-header">
+            <span>Gas Type</span><span>Qty Full</span><span>Qty Empty</span><span>Remarks</span><span></span>
+        </div>
+        <div id="fullRows"></div>
+        <button type="button" class="btn btn-outline" onclick="addRow('full')" style="margin-bottom:20px">+ Add Gas Type</button>
+
+        <!-- Empty section toggle -->
+        <label class="toggle-empty">
+            <input type="checkbox" id="hasEmpty" onchange="toggleEmpty(this)"/>
+            Also recording empty returns?
+        </label>
+
+        <div class="empty-section" id="emptySection">
+            <div class="section-title" style="color:#cc7000">Empty Returns</div>
+            <div class="row-header">
+                <span>Gas Type</span><span>Qty Full</span><span>Qty Empty</span><span>Remarks</span><span></span>
+            </div>
+            <div id="emptyRows"></div>
+            <button type="button" class="btn btn-outline" onclick="addRow('empty')" style="margin-bottom:16px;border-color:#cc7000;color:#cc7000">+ Add Empty Type</button>
+        </div>
+
+        <div id="result-box">
+            <div id="result-content"></div>
+        </div>
+
+        <button class="btn btn-green" onclick="submitEntry()" style="margin-top:16px">Submit All Entries</button>
+    </div>
+</div>
+
+<script th:inline="javascript">
+const gasTypes = /*[[${gasTypes}]]*/ [];
+
+function makeRow(containerId, defaultType) {
+    const container = document.getElementById(containerId);
+    const div = document.createElement('div');
+    div.className = 'row-grid';
+    div.innerHTML = `
+        <select class="ctype-sel">
+            ${gasTypes.map(t => `<option value="${t}" ${t===defaultType?'selected':''}>${t}</option>`).join('')}
+        </select>
+        <input type="number" class="cfull-inp" value="0" min="0"/>
+        <input type="number" class="cempty-inp" value="0" min="0"/>
+        <input type="text" class="remarks-inp" placeholder="Optional"/>
+        <button class="btn-remove" onclick="this.parentElement.remove()">×</button>
+    `;
+    container.appendChild(div);
+}
+
+let fullCount = 0;
+function addRow(section) {
+    const defaults = ['OXY','CO2','LPG','DA','ARGON','ARGOSHIELD','NITROGEN'];
+    const containerId = section === 'full' ? 'fullRows' : 'emptyRows';
+    makeRow(containerId, defaults[fullCount++ % defaults.length]);
+}
+
+function toggleEmpty(cb) {
+    document.getElementById('emptySection').classList.toggle('visible', cb.checked);
+}
+
+function collectRows(containerId) {
+    return Array.from(document.getElementById(containerId).querySelectorAll('.row-grid')).map(row => ({
+        partyName: document.getElementById('partyName').value,
+        date:      document.getElementById('entryDate').value,
+        ctype:     row.querySelector('.ctype-sel').value,
+        cfull:     row.querySelector('.cfull-inp').value,
+        cempty:    row.querySelector('.cempty-inp').value,
+        remarks:   row.querySelector('.remarks-inp').value
+    }));
+}
+
+async function submitEntry() {
+    const party = document.getElementById('partyName').value;
+    const date  = document.getElementById('entryDate').value;
+    if (!party || !date) { alert('Please select a party and date first.'); return; }
+
+    const rows = [
+        ...collectRows('fullRows'),
+        ...(document.getElementById('hasEmpty').checked ? collectRows('emptyRows') : [])
+    ].filter(r => parseInt(r.cfull)||parseInt(r.cempty));
+
+    if (!rows.length) { alert('Add at least one row with a non-zero quantity.'); return; }
+
+    const resp = await fetch('/newEntryF', {
+        method: 'POST',
+        headers: {'Content-Type':'application/json'},
+        body: JSON.stringify(rows)
+    });
+    const data = await resp.json();
+
+    const box = document.getElementById('result-box');
+    const content = document.getElementById('result-content');
+    box.style.display = 'block';
+
+    let html = '';
+    if (data.saved.length)
+        html += `<div class="msg-success">Saved: ${data.saved.join(', ')}</div>`;
+    if (data.errors.length)
+        html += `<div class="msg-error">Issues: ${data.errors.join('<br/>')}</div>`;
+    content.innerHTML = html;
+
+    if (data.saved.length && !data.errors.length) {
+        document.getElementById('fullRows').innerHTML = '';
+        document.getElementById('emptyRows').innerHTML = '';
+        document.getElementById('hasEmpty').checked = false;
+        document.getElementById('emptySection').classList.remove('visible');
+    }
+}
+
+// Start with one row
+addRow('full');
+</script>
+</body>
+</html>

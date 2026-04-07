@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="en">
+<head>
+    <title>History — Holding View</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <style>
+        body{margin:0;font-family:Arial,Helvetica,sans-serif;background:#f4f4f4;}
+        .topnav{overflow:hidden;background:#1a1a2e;}
+        .topnav a{float:left;color:#eee;padding:14px 16px;text-decoration:none;font-size:15px;}
+        .topnav a:hover{background:#16213e;color:#04AA6D;}
+        .topnav a.active{background:#04AA6D;color:white;}
+        .content{padding:24px;max-width:1100px;margin:0 auto;}
+        .tab-row{display:flex;gap:0;margin-bottom:20px;border-bottom:2px solid #04AA6D;}
+        .tab{padding:10px 24px;cursor:pointer;font-size:14px;font-weight:bold;color:#888;border-radius:6px 6px 0 0;text-decoration:none;}
+        .tab.active{background:#04AA6D;color:white;}
+        .tab:hover:not(.active){background:#e8f5e9;color:#04AA6D;}
+        .filter-row{display:flex;gap:12px;align-items:end;margin-bottom:20px;}
+        label{font-size:13px;font-weight:bold;color:#555;}
+        select{padding:9px 12px;border:1px solid #ccc;border-radius:4px;font-size:14px;min-width:220px;}
+        .btn{padding:10px 20px;border:none;border-radius:4px;cursor:pointer;font-size:14px;font-weight:bold;background:#04AA6D;color:white;}
+        table{width:100%;border-collapse:collapse;background:white;border-radius:8px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,.07);}
+        th{background:#04AA6D;color:white;padding:10px 14px;text-align:left;font-size:13px;}
+        td{padding:9px 14px;border-bottom:1px solid #eee;font-size:13px;}
+        tr:last-child td{border-bottom:none;}
+        .pos{color:#04AA6D;font-weight:bold;}
+        .neg{color:#cc0000;font-weight:bold;}
+        .zero{color:#aaa;}
+        .section-label{font-size:13px;font-weight:bold;color:#04AA6D;margin:16px 0 6px;text-transform:uppercase;letter-spacing:.5px;}
+        h2{color:#1a1a2e;margin-bottom:4px;}
+        .export-link{font-size:13px;color:#04AA6D;text-decoration:none;margin-left:12px;}
+    </style>
+</head>
+<body>
+<div class="topnav">
+    <a th:href="@{/newhome}">Home</a>
+    <a th:href="@{/newEntryF}">New Entry</a>
+    <a th:href="@{/purchaseEntryF}">Purchase</a>
+    <a th:href="@{/cylinderNumbers}">Cylinder Numbers</a>
+    <a class="active" th:href="@{/historyHolding}">History</a>
+    <a th:href="@{/deleteEntryF}">Delete</a>
+    <a th:href="@{/newPartyEntryF}">Parties</a>
+    <a th:href="@{/billing/generate}">Billing</a>
+</div>
+<div class="content">
+    <h2>History</h2>
+    <div class="tab-row">
+        <a class="tab active" th:href="@{/historyHolding}">Holding View</a>
+        <a class="tab" th:href="@{/historyDetail}">Detail View</a>
+    </div>
+
+    <form th:action="@{/historyHolding}" method="get">
+        <div class="filter-row">
+            <div>
+                <label>Party (optional — blank = all parties summary)</label><br/>
+                <select name="partyName">
+                    <option value="">-- All Parties --</option>
+                    <option th:each="p : ${partyNames}" th:value="${p}" th:text="${p}"
+                            th:selected="${p == selectedParty}"></option>
+                </select>
+            </div>
+            <button type="submit" class="btn">View</button>
+            <a th:if="${selectedParty != null and !#strings.isEmpty(selectedParty)}"
+               th:href="@{/exportF(partyName=${selectedParty})}" class="export-link">Export CSV</a>
+        </div>
+    </form>
+
+    <!-- All-parties summary -->
+    <div th:if="${holdingSummary != null}">
+        <table>
+            <thead><tr><th>Party</th><th>Gas Type</th><th>Holding</th></tr></thead>
+            <tbody>
+                <tr th:each="e : ${holdingSummary}">
+                    <td><a th:href="@{/historyHolding(partyName=${e.partyName})}"
+                           style="color:#04AA6D;text-decoration:none" th:text="${e.partyName}"></a></td>
+                    <td th:text="${e.ctype}"></td>
+                    <td th:text="${e.cholding}"
+                        th:classappend="${e.cholding > 0 ? 'pos' : (e.cholding == 0 ? 'zero' : 'neg')}"></td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+
+    <!-- Single party detail by type -->
+    <div th:if="${byType != null}">
+        <th:block th:each="typeEntry : ${byType}">
+            <div class="section-label" th:text="${typeEntry.key}"></div>
+            <table>
+                <thead><tr><th>Date</th><th>Full Out</th><th>Empty Return</th><th>Holding</th><th>Remarks</th></tr></thead>
+                <tbody>
+                    <tr th:each="e : ${typeEntry.value}">
+                        <td th:text="${#dates.format(e.date,'dd-MM-yyyy')}"></td>
+                        <td th:text="${e.cfull}"></td>
+                        <td th:text="${e.cempty}"></td>
+                        <td th:text="${e.cholding}"
+                            th:classappend="${e.cholding > 0 ? 'pos' : (e.cholding == 0 ? 'zero' : 'neg')}"></td>
+                        <td th:text="${e.remarks}"></td>
+                    </tr>
+                </tbody>
+            </table>
+        </th:block>
+    </div>
+</div>
+</body>
+</html>

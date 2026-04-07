@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="en">
+<head>
+    <title>Purchase Entry</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <style>
+        body{margin:0;font-family:Arial,Helvetica,sans-serif;background:#f4f4f4;}
+        .topnav{overflow:hidden;background:#1a1a2e;}
+        .topnav a{float:left;color:#eee;padding:14px 16px;text-decoration:none;font-size:15px;}
+        .topnav a:hover{background:#16213e;color:#04AA6D;}
+        .topnav a.active{background:#04AA6D;color:white;}
+        .content{padding:24px;max-width:900px;margin:0 auto;}
+        h2{color:#1a1a2e;}
+        .card{background:white;border-radius:10px;padding:24px;box-shadow:0 2px 8px rgba(0,0,0,.07);}
+        label{display:block;font-size:13px;font-weight:bold;color:#555;margin-bottom:4px;}
+        select,input{padding:9px 12px;border:1px solid #ccc;border-radius:4px;font-size:14px;width:100%;box-sizing:border-box;}
+        .row-grid{display:grid;grid-template-columns:180px 80px 80px 1fr 36px;gap:10px;align-items:end;margin-bottom:10px;}
+        .row-header{display:grid;grid-template-columns:180px 80px 80px 1fr 36px;gap:10px;margin-bottom:4px;}
+        .row-header span{font-size:12px;font-weight:bold;color:#888;text-transform:uppercase;}
+        .btn{padding:10px 22px;border:none;border-radius:4px;cursor:pointer;font-size:14px;font-weight:bold;}
+        .btn-green{background:#1a73e8;color:white;}
+        .btn-green:hover{background:#1557b0;}
+        .btn-outline{background:white;border:1px solid #1a73e8;color:#1a73e8;}
+        .btn-remove{background:#eee;border:none;border-radius:50%;width:30px;height:30px;cursor:pointer;font-size:16px;color:#888;}
+        .btn-remove:hover{background:#f8d7da;color:#cc0000;}
+        .top-row{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:20px;}
+        .section-title{font-size:13px;font-weight:bold;color:#1a73e8;text-transform:uppercase;letter-spacing:.5px;margin-bottom:12px;}
+        .msg-success{background:#d4edda;color:#155724;padding:12px;border-radius:4px;margin-bottom:16px;}
+        .msg-error{background:#f8d7da;color:#721c24;padding:12px;border-radius:4px;margin-bottom:16px;}
+        .info-box{background:#e8f0fe;color:#1a73e8;padding:10px 14px;border-radius:4px;font-size:13px;margin-bottom:16px;}
+        #result-box{display:none;margin-top:16px;}
+    </style>
+</head>
+<body>
+<div class="topnav">
+    <a th:href="@{/newhome}">Home</a>
+    <a th:href="@{/newEntryF}">New Entry</a>
+    <a class="active" th:href="@{/purchaseEntryF}">Purchase</a>
+    <a th:href="@{/cylinderNumbers}">Cylinder Numbers</a>
+    <a th:href="@{/historyHolding}">History</a>
+    <a th:href="@{/deleteEntryF}">Delete</a>
+    <a th:href="@{/newPartyEntryF}">Parties</a>
+    <a th:href="@{/billing/generate}">Billing</a>
+</div>
+<div class="content">
+    <h2>Purchase Entry</h2>
+    <div class="info-box">Purchase entries record stock received. Purchaser party names start with "1".</div>
+    <div class="card">
+        <div class="top-row">
+            <div>
+                <label>Purchaser</label>
+                <select id="partyName">
+                    <option value="">-- Select Purchaser --</option>
+                    <option th:each="p : ${partyNames}" th:value="${p}" th:text="${p}"></option>
+                </select>
+            </div>
+            <div>
+                <label>Date</label>
+                <input type="date" id="entryDate" th:value="${defaultDate}"/>
+            </div>
+        </div>
+        <div class="section-title">Stock Received</div>
+        <div class="row-header">
+            <span>Gas Type</span><span>Full In</span><span>Empty Out</span><span>Remarks</span><span></span>
+        </div>
+        <div id="rows"></div>
+        <button type="button" class="btn btn-outline" onclick="addRow()" style="margin-bottom:20px">+ Add Gas Type</button>
+        <div id="result-box"><div id="result-content"></div></div>
+        <button class="btn btn-green" onclick="submitEntry()">Submit Purchase</button>
+    </div>
+</div>
+<script th:inline="javascript">
+const gasTypes = /*[[${gasTypes}]]*/ [];
+let count = 0;
+function addRow() {
+    const defaults = ['OXY','CO2','LPG','DA','ARGON','ARGOSHIELD','NITROGEN'];
+    const div = document.createElement('div');
+    div.className = 'row-grid';
+    const t = defaults[count++ % defaults.length];
+    div.innerHTML = `
+        <select class="ctype-sel">${gasTypes.map(g=>`<option value="${g}" ${g===t?'selected':''}>${g}</option>`).join('')}</select>
+        <input type="number" class="cfull-inp" value="0" min="0"/>
+        <input type="number" class="cempty-inp" value="0" min="0"/>
+        <input type="text" class="remarks-inp" placeholder="Optional"/>
+        <button class="btn-remove" onclick="this.parentElement.remove()">×</button>
+    `;
+    document.getElementById('rows').appendChild(div);
+}
+async function submitEntry() {
+    const party = document.getElementById('partyName').value;
+    const date  = document.getElementById('entryDate').value;
+    if (!party || !date) { alert('Please select a purchaser and date.'); return; }
+    const rows = Array.from(document.querySelectorAll('.row-grid')).map(r => ({
+        partyName: party, date,
+        ctype:   r.querySelector('.ctype-sel').value,
+        cfull:   r.querySelector('.cfull-inp').value,
+        cempty:  r.querySelector('.cempty-inp').value,
+        remarks: r.querySelector('.remarks-inp').value
+    })).filter(r => parseInt(r.cfull)||parseInt(r.cempty));
+    if (!rows.length) { alert('Add at least one row with a non-zero quantity.'); return; }
+    const resp = await fetch('/purchaseEntryF', {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(rows)});
+    const data = await resp.json();
+    const box = document.getElementById('result-box');
+    box.style.display = 'block';
+    let html = '';
+    if (data.saved.length) html += `<div class="msg-success">Saved: ${data.saved.join(', ')}</div>`;
+    if (data.errors.length) html += `<div class="msg-error">Issues: ${data.errors.join('<br/>')}</div>`;
+    document.getElementById('result-content').innerHTML = html;
+    if (data.saved.length && !data.errors.length) document.getElementById('rows').innerHTML = '';
+}
+addRow();
+</script>
+</body>
+</html>

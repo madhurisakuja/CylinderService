@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="en">
+<head>
+    <title>History — Detail View</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <style>
+        body{margin:0;font-family:Arial,Helvetica,sans-serif;background:#f4f4f4;}
+        .topnav{overflow:hidden;background:#1a1a2e;}
+        .topnav a{float:left;color:#eee;padding:14px 16px;text-decoration:none;font-size:15px;}
+        .topnav a:hover{background:#16213e;color:#04AA6D;}
+        .topnav a.active{background:#04AA6D;color:white;}
+        .content{padding:24px;max-width:1000px;margin:0 auto;}
+        .tab-row{display:flex;gap:0;margin-bottom:20px;border-bottom:2px solid #04AA6D;}
+        .tab{padding:10px 24px;cursor:pointer;font-size:14px;font-weight:bold;color:#888;border-radius:6px 6px 0 0;text-decoration:none;}
+        .tab.active{background:#04AA6D;color:white;}
+        .tab:hover:not(.active){background:#e8f5e9;color:#04AA6D;}
+        .filter-grid{display:grid;grid-template-columns:1fr 1fr auto;gap:12px;align-items:end;margin-bottom:20px;}
+        label{font-size:13px;font-weight:bold;color:#555;}
+        select,input[type=number]{padding:9px 12px;border:1px solid #ccc;border-radius:4px;font-size:14px;width:100%;box-sizing:border-box;}
+        .btn{padding:10px 20px;border:none;border-radius:4px;cursor:pointer;font-size:14px;font-weight:bold;background:#04AA6D;color:white;}
+        .btn-secondary{background:#1a73e8;color:white;}
+        table{width:100%;border-collapse:collapse;background:white;border-radius:8px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,.07);}
+        th{background:#04AA6D;color:white;padding:10px 14px;text-align:left;font-size:13px;}
+        td{padding:9px 14px;border-bottom:1px solid #eee;font-size:13px;}
+        tr:last-child td{border-bottom:none;}
+        h2{color:#1a1a2e;margin-bottom:4px;}
+        .hint{color:#aaa;font-size:13px;text-align:center;padding:30px;}
+        .export-link{font-size:13px;color:#04AA6D;text-decoration:none;margin-left:12px;}
+        .not-rotation-link{font-size:13px;color:#888;text-decoration:none;float:right;}
+    </style>
+</head>
+<body>
+<div class="topnav">
+    <a th:href="@{/newhome}">Home</a>
+    <a th:href="@{/newEntryF}">New Entry</a>
+    <a th:href="@{/purchaseEntryF}">Purchase</a>
+    <a th:href="@{/cylinderNumbers}">Cylinder Numbers</a>
+    <a class="active" th:href="@{/historyDetail}">History</a>
+    <a th:href="@{/deleteEntryF}">Delete</a>
+    <a th:href="@{/newPartyEntryF}">Parties</a>
+    <a th:href="@{/billing/generate}">Billing</a>
+</div>
+<div class="content">
+    <h2>History
+        <a th:href="@{/notInRotation}" class="not-rotation-link">Not in Rotation (15+ days)</a>
+    </h2>
+    <div class="tab-row">
+        <a class="tab" th:href="@{/historyHolding}">Holding View</a>
+        <a class="tab active" th:href="@{/historyDetail}">Detail View</a>
+    </div>
+
+    <form th:action="@{/historyDetail}" method="get">
+        <div class="filter-grid">
+            <div>
+                <label>Search by Party</label>
+                <select name="partyName">
+                    <option value="">-- Select Party --</option>
+                    <option th:each="p : ${partyNames}" th:value="${p}" th:text="${p}"
+                            th:selected="${p == selectedParty}"></option>
+                </select>
+            </div>
+            <div>
+                <label>OR by Cylinder Number</label>
+                <input type="number" name="cylinderNo" th:value="${selectedCylinder}" placeholder="e.g. 1042" min="1"/>
+            </div>
+            <button type="submit" class="btn">Search</button>
+        </div>
+    </form>
+
+    <!-- Results -->
+    <div th:if="${history != null and !#lists.isEmpty(history)}">
+        <p style="font-size:13px;color:#555;margin-bottom:8px">
+            <span th:if="${viewMode == 'party'}">
+                Cylinder movements for <strong th:text="${selectedParty}"></strong>
+                <a th:href="@{/exportF(partyName=${selectedParty})}" class="export-link">Export CSV</a>
+            </span>
+            <span th:if="${viewMode == 'cylinder'}">
+                History for cylinder <strong th:text="${selectedCylinder}"></strong>
+                <a th:href="@{/exportF(cylinderNo=${selectedCylinder})}" class="export-link">Export CSV</a>
+            </span>
+        </p>
+        <table>
+            <thead>
+                <tr>
+                    <th>Date</th>
+                    <th>Cylinder No.</th>
+                    <th>Gas Type</th>
+                    <th>Customer</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr th:each="row : ${history}">
+                    <td th:text="${#dates.format(row.get(0),'dd-MM-yyyy')}"></td>
+                    <td th:if="${viewMode == 'party'}"  th:text="${row.get(3)}"></td>
+                    <td th:if="${viewMode == 'cylinder'}" th:text="${selectedCylinder}"></td>
+                    <td th:text="${row.get(1)}"></td>
+                    <td th:text="${row.get(2)}"></td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+    <div class="hint" th:if="${history == null}">Select a party or cylinder number above to search.</div>
+    <div class="hint" th:if="${history != null and #lists.isEmpty(history)}">No records found.</div>
+</div>
+</body>
+</html>
