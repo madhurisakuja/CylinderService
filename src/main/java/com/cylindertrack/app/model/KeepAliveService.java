@@ -1,3 +1,11 @@
+package com.cylindertrack.app.model;
+
+import org.springframework.stereotype.Service;
+import org.springframework.web.client.RestTemplate;
+import org.springframework.scheduling.annotation.Scheduled;
+import org.springframework.http.HttpMethod;
+import java.time.LocalDateTime;
+
 @Service
 public class KeepAliveService {
 
@@ -8,8 +16,8 @@ public class KeepAliveService {
     @Scheduled(cron = "0 */10 9-18 * * *", zone = "America/Chicago")
     public void pingSelf() {
         try {
-            // Using a simple head request to save bandwidth
             System.out.println("Keep-Alive: Pinging at " + LocalDateTime.now());
+            // Using execute with GET to verify the site is up
             restTemplate.execute(url, HttpMethod.GET, null, null);
         } catch (Exception e) {
             System.err.println("Keep-Alive failed: " + e.getMessage());
