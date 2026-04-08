@@ -3,6 +3,8 @@
 <head>
     <title>New Entry</title>
     <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="_csrf" th:content="${_csrf.token}"/>
+    <meta name="_csrf_header" th:content="${_csrf.headerName}"/>
     <style>
         body{margin:0;font-family:Arial,Helvetica,sans-serif;background:#f4f4f4;}
         .topnav{overflow:hidden;background:#1a1a2e;}
@@ -237,6 +239,20 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     
     async function submitEntry() {
+    const csrfToken = document.querySelector('meta[name="_csrf"]').getAttribute('content');
+    const csrfHeader = document.querySelector('meta[name="_csrf_header"]').getAttribute('content');
+    const repo = await fetch('/newEntryF', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            [csrfHeader]: csrfToken
+        },
+        body: JSON.stringify(rows)
+    });
+    if (!repo.ok) {
+        alert('Failed to submit purchase entry. Please try again.');
+        return;
+    }
         const party = document.getElementById('partyName').value;
         const date  = document.getElementById('entryDate').value;
         

@@ -30,6 +30,8 @@
         .info-box{background:#e8f0fe;color:#1a73e8;padding:10px 14px;border-radius:4px;font-size:13px;margin-bottom:16px;}
         #result-box{display:none;margin-top:16px;}
     </style>
+    <meta name="_csrf" th:content="${_csrf.token}"/>
+    <meta name="_csrf_header" th:content="${_csrf.headerName}"/>
 </head>
 <body>
 <div class="topnav">
@@ -87,6 +89,21 @@ function addRow() {
     document.getElementById('rows').appendChild(div);
 }
 async function submitEntry() {
+    const csrfToken = document.querySelector('meta[name="_csrf"]').getAttribute('content');
+    const csrfHeader = document.querySelector('meta[name="_csrf_header"]').getAttribute('content');
+    const repo = await fetch('/purchaseEntryF', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            [csrfHeader]: csrfToken
+        },
+        body: JSON.stringify(rows)
+    });
+    if (!repo.ok) {
+        alert('Failed to submit purchase entry. Please try again.');
+        return;
+    }
+    
     const party = document.getElementById('partyName').value;
     const date  = document.getElementById('entryDate').value;
     if (!party || !date) { alert('Please select a purchaser and date.'); return; }
