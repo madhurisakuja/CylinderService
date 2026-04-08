@@ -37,7 +37,7 @@
     <a th:href="@{/billing/generate}">Billing</a>
 </div>
 <div class="content">
-    <h2>Current Holdings</h2>
+    <!--h2>Current Holdings</h2>
     <p class="subtitle">Latest holding count per party per gas type</p>
 
     <div th:if="${#lists.isEmpty(holdingSummary)}" class="empty-state">
@@ -45,7 +45,7 @@
     </div>
 
     <div class="holding-grid" th:if="${not #lists.isEmpty(holdingSummary)}">
-        <!-- Group by party name using Thymeleaf iteration -->
+        
         <th:block th:with="parties=${#sets.toSet(holdingSummary.![partyName])}">
             <div class="party-card" th:each="party : ${#lists.sort(#lists.toList(parties))}">
                 <div class="party-name" th:text="${party}"></div>
@@ -59,7 +59,7 @@
                 </th:block>
             </div>
         </th:block>
-    </div>
+    </div-->
 </div>
 </body>
 </html>
