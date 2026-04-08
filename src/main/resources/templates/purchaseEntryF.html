@@ -90,6 +90,7 @@ async function submitEntry() {
     const party = document.getElementById('partyName').value;
     const date  = document.getElementById('entryDate').value;
     if (!party || !date) { alert('Please select a purchaser and date.'); return; }
+   
     const rows = Array.from(document.querySelectorAll('.row-grid')).map(r => ({
         partyName: party, date,
         ctype:   r.querySelector('.ctype-sel').value,
@@ -97,7 +98,19 @@ async function submitEntry() {
         cempty:  r.querySelector('.cempty-inp').value,
         remarks: r.querySelector('.remarks-inp').value
     })).filter(r => parseInt(r.cfull)||parseInt(r.cempty));
+    
+    //Empty Check
     if (!rows.length) { alert('Add at least one row with a non-zero quantity.'); return; }
+     // --- NEW DUPLICATE CHECK START ---
+    const seenTypes = new Set();
+    for (const row of rows) {
+        if (seenTypes.has(row.ctype)) {
+            alert(`Duplicate detected: You have entered ${row.ctype} more than once. Please combine them into a single row.`);
+            return; // Stop the submission
+        }
+        seenTypes.add(row.ctype);
+    }
+    // --- NEW DUPLICATE CHECK END ---
     const resp = await fetch('/purchaseEntryF', {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(rows)});
     const data = await resp.json();
     const box = document.getElementById('result-box');

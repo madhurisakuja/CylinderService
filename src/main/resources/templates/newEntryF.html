@@ -259,6 +259,17 @@ document.addEventListener('DOMContentLoaded', () => {
             alert('Add at least one row with a full or empty quantity.'); 
             return; 
         }
+
+        // --- NEW DUPLICATE CHECK START ---
+        const seenTypes = new Set();
+        for (const row of rows) {
+            if (seenTypes.has(row.ctype)) {
+                alert(`Duplicate detected: You have entered ${row.ctype} more than once. Please combine them into a single row.`);
+                return; // Stop the submission
+            }
+            seenTypes.add(row.ctype);
+        }
+        // --- NEW DUPLICATE CHECK END ---
     
         const resp = await fetch('/newEntryF', {
             method: 'POST',
