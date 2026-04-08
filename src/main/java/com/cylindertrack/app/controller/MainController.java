@@ -40,24 +40,29 @@ public class MainController {
 
     // ── Login / Home ──────────────────────────────────────────────────────────
 
+    // The catch-all mapping
+    @GetMapping("/**")
+    public String handleUnknownPaths() {
+        return "redirect:/myhome";
+    }
+
     @GetMapping("/login")
     public String login() { return "login"; }
 
     @GetMapping({"/", "/newhome", "/myhome"})
     public String home(Model model) {
-        model.addAttribute("holdingSummary", mainEntryRepo.getCurrentHoldingSummary());
+       // model.addAttribute("holdingSummary", mainEntryRepo.getCurrentHoldingSummary());
         return "newhome";
     }
 
     // ── New Party ─────────────────────────────────────────────────────────────
 
     @GetMapping("/newPartyEntryF")
-    public String newPartyGet(Model model) {
+    public String newPartyGet(@RequestParam(defaultValue = "0") int page, Model model) {
         model.addAttribute("entryParty", new PartyNames());
         model.addAttribute("allParties", partyNamesRepo.getAllPartyNamesAll());
         return "newPartyEntryF";
     }
-
     @PostMapping("/newPartyEntryF")
     public RedirectView newPartyPost(@ModelAttribute("entryParty") PartyNames partyName,
                                      RedirectAttributes ra) {
@@ -74,13 +79,17 @@ public class MainController {
     @GetMapping("/newEntryF")
     public String newEntryGet(Model model) {
         Date defDate = mainEntryRepo.getLatestEntryDate();
+        LocalDate today = LocalDate.now();
+        Date todayDate = Date.from(today.atStartOfDay(ZoneId.systemDefault()).toInstant());
+
+        
         model.addAttribute("defaultDate", defDate != null
-            ? new SimpleDateFormat("yyyy-MM-dd").format(defDate) : "");
+            ? new SimpleDateFormat("yyyy-MM-dd").format(defDate) : new SimpleDateFormat("yyyy-MM-dd").format(todayDate));
         model.addAttribute("partyNames",  partyNamesRepo.getAllPartyNames());
         model.addAttribute("gasTypes",    Arrays.stream(CylinderTypeF.values()).map(Enum::name).toList());
         model.addAttribute("statuses",    Arrays.stream(CylinderStatus.values()).map(Enum::name).toList());
         return "newEntryF";
-    }
+    }  
 
     /**
      * Accepts a multi-type bulk entry posted as JSON from the page's JS.
