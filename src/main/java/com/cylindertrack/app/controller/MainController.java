@@ -51,14 +51,13 @@ public class MainController {
 
     @GetMapping({"/", "/newhome", "/myhome"})
     public String home(Model model) {
-       // model.addAttribute("holdingSummary", mainEntryRepo.getCurrentHoldingSummary());
         return "newhome";
     }
 
     // ── New Party ─────────────────────────────────────────────────────────────
 
     @GetMapping("/newPartyEntryF")
-    public String newPartyGet(@RequestParam(defaultValue = "0") int page, Model model) {
+    public String newPartyGet(Model model) {
         model.addAttribute("entryParty", new PartyNames());
         model.addAttribute("allParties", partyNamesRepo.getAllPartyNamesAll());
         return "newPartyEntryF";
