@@ -91,19 +91,7 @@ function addRow() {
 async function submitEntry() {
     const csrfToken = document.querySelector('meta[name="_csrf"]').getAttribute('content');
     const csrfHeader = document.querySelector('meta[name="_csrf_header"]').getAttribute('content');
-    const repo = await fetch('/purchaseEntryF', {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-            [csrfHeader]: csrfToken
-        },
-        body: JSON.stringify(rows)
-    });
-    if (!repo.ok) {
-        alert('Failed to submit purchase entry. Please try again.');
-        return;
-    }
-    
+   
     const party = document.getElementById('partyName').value;
     const date  = document.getElementById('entryDate').value;
     if (!party || !date) { alert('Please select a purchaser and date.'); return; }
@@ -128,7 +116,7 @@ async function submitEntry() {
         seenTypes.add(row.ctype);
     }
     // --- NEW DUPLICATE CHECK END ---
-    const resp = await fetch('/purchaseEntryF', {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(rows)});
+    const resp = await fetch('/purchaseEntryF', {method:'POST',headers:{'Content-Type':'application/json', [csrfHeader]: csrfToken},body:JSON.stringify(rows)});
     const data = await resp.json();
     const box = document.getElementById('result-box');
     box.style.display = 'block';

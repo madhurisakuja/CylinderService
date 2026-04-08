@@ -241,18 +241,7 @@ document.addEventListener('DOMContentLoaded', () => {
     async function submitEntry() {
     const csrfToken = document.querySelector('meta[name="_csrf"]').getAttribute('content');
     const csrfHeader = document.querySelector('meta[name="_csrf_header"]').getAttribute('content');
-    const repo = await fetch('/newEntryF', {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-            [csrfHeader]: csrfToken
-        },
-        body: JSON.stringify(rows)
-    });
-    if (!repo.ok) {
-        alert('Failed to submit purchase entry. Please try again.');
-        return;
-    }
+   
         const party = document.getElementById('partyName').value;
         const date  = document.getElementById('entryDate').value;
         
@@ -289,7 +278,7 @@ document.addEventListener('DOMContentLoaded', () => {
     
         const resp = await fetch('/newEntryF', {
             method: 'POST',
-            headers: {'Content-Type':'application/json'},
+            headers: {'Content-Type':'application/json', [csrfHeader]: csrfToken},
             body: JSON.stringify(rows)
         });
         
