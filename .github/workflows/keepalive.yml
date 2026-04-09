@@ -1,0 +1,12 @@
+name: Render 9-to-5 Pinger
+on:
+  schedule:
+    # 03:30 UTC to 12:30 UTC matches 9:00 AM to 6:00 PM IST
+    # Runs every 10 minutes
+    - cron: '*/10 3-12 * * *'
+jobs:
+  ping_render:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Send Ping
+        run: curl -I https://cylinderservice.onrender.com/newhome
