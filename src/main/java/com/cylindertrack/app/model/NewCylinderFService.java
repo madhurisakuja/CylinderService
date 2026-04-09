@@ -86,4 +86,11 @@ public interface NewCylinderFService extends JpaRepository<MainCylinderEntry, Lo
            "order by c.cylinderNo asc")
     List<Long> findFullCylindersForBill(String partyName, String gasType,
                                         Date fromDate, Date toDate);
+
+ // ── Delete ────────────────────────────────────────────────────────────────
+
+    @Modifying
+    @Transactional
+    @Query("delete from MainCylinderEntry e where e.customerName=?1 and DATE(e.date) = DATE(?2)")
+    void deleteByPartyAndDate(String partyName, Date date);
 }

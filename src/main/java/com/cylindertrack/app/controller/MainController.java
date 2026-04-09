@@ -197,6 +197,8 @@ public class MainController {
     public RedirectView deleteEntryPost(@ModelAttribute MainEntry entry, RedirectAttributes ra) {
         mainEntryRepo.deleteByPartyAndDate(entry.getPartyName(), entry.getDate());
         log.info("Deleted entries for party={} date={}", entry.getPartyName(), entry.getDate());
+        //There is a possibility to not have cylinder entries made yet and its ok.
+        cylinderRepo.deleteByPartyAndDate(entry.getPartyName(), entry.getDate());
         ra.addFlashAttribute("deleteSuccess", true);
         return new RedirectView("/deleteEntryF", true);
     }

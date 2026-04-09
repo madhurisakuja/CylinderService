@@ -195,6 +195,10 @@ public class BillingController {
                              HttpServletResponse response) throws IOException {
 
         BillSummary bill = billingService.generateBill(partyName, year, month, discount, security, tc);
+        if(bill.isEmpty()){
+             response.sendError(404, "No entries found for the selected month.");
+            return;
+        }
         byte[] xlsx = excelGenerator.generate(List.of(bill));
         String filename = sanitize(partyName) + "_" +
                           bill.getInvoiceNumber().replace("/", "-") + ".xlsx";
