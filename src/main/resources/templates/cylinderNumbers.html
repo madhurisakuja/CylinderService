@@ -210,36 +210,62 @@ async function saveAll() {
             cylinderNo = el.value.trim();
         }
         if (!cylinderNo) continue;
+        // Key must match row.get("cylinderNo") in Java
         rows.push({cylinderNo, partyName: r.party, ctype: r.ctype, date: r.date, status: r.status});
     }
 
     if (!rows.length) { alert('No cylinder numbers entered.'); return; }
 
-    const resp = await fetch('/cylinderNumbers/save', {
-        method: 'POST',
-        headers: {'Content-Type':'application/json'},
-        body: JSON.stringify(rows)
-    });
-    const data = await resp.json();
+    // CSRF fetch from meta tags
+    const csrfToken = document.querySelector('meta[name="_csrf"]').getAttribute('content');
+    const csrfHeader = document.querySelector('meta[name="_csrf_header"]').getAttribute('content');
 
-    const area = document.getElementById('result-area');
-    area.style.display = 'block';
-    let html = '';
-    if (data.saved > 0) html += `<div class="msg-success">${data.saved} cylinder number(s) saved.</div>`;
-    for (const w of data.warnings) {
-        if (w.startsWith('DUPLICATE_FULL:')) {
-            const [,cno,others] = w.split(':');
-            html += `<div class="msg-error">⚠ Cylinder ${cno}: last entry was also FULL.
-                ${others ? 'Cylinders currently empty at party: ' + others : 'No empty cylinders found at party.'}
-                Please verify before proceeding.</div>`;
-        } else if (w.startsWith('PARTY_MISMATCH:')) {
-            const [,cno,prev,curr] = w.split(':');
-            html += `<div class="msg-error">⚠ Cylinder ${cno} was last with <b>${prev}</b>, now being returned by <b>${curr}</b>.</div>`;
-        } else {
-            html += `<div class="msg-error">${w}</div>`;
+    try {
+        const resp = await fetch('/cylinderNumbers/save', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                [csrfHeader]: csrfToken
+            },
+            body: JSON.stringify(rows)
+        });
+
+        // If we get a 403 or 500, don't try to parse warnings
+        if (!resp.ok) {
+            const errorText = await resp.text();
+            console.error("Server Error:", errorText);
+            alert(`Error ${resp.status}: Could not save. Check console for details.`);
+            return;
         }
+
+        const data = await resp.json();
+        const area = document.getElementById('result-area');
+        const content = document.getElementById('result-content');
+        area.style.display = 'block';
+        
+        let html = '';
+        if (data.saved > 0) html += `<div class="msg-success">${data.saved} cylinder number(s) saved.</div>`;
+
+        // SAFE ITERATION: Check if warnings exists and is an array
+        if (data.warnings && Array.isArray(data.warnings)) {
+            data.warnings.forEach(w => {
+                if (w.startsWith('DUPLICATE_FULL:')) {
+                    const parts = w.split(':');
+                    html += `<div class="msg-error">⚠ Cylinder ${parts[1]}: last entry was also FULL. ${parts[2] ? '<br>Cylinders at party: ' + parts[2] : ''}</div>`;
+                } else if (w.startsWith('PARTY_MISMATCH:')) {
+                    const parts = w.split(':');
+                    html += `<div class="msg-error">⚠ Cylinder ${parts[1]} returned by ${parts[3]} (Last at ${parts[2]}).</div>`;
+                } else {
+                    html += `<div class="msg-error">${w}</div>`;
+                }
+            });
+        }
+        content.innerHTML = html;
+
+    } catch (e) {
+        console.error("Fetch failed:", e);
+        alert("Network error: Is the server down?");
     }
-    document.getElementById('result-content').innerHTML = html;
 }
 </script>
 </body>
