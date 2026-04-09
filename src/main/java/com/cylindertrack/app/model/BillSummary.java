@@ -51,7 +51,7 @@ public class BillSummary {
     }
 
     private BigDecimal nvl(BigDecimal v) { return v != null ? v : BigDecimal.ZERO; }
-
+public boolean isEmpty() { return this.isEmpty();}
     public String getPartyName()         { return partyName; }
     public PartyAccount getPartyAccount(){ return partyAccount; }
     public Date getInvoiceDate()         { return invoiceDate; }
