@@ -4,41 +4,47 @@
     <title>Generate Bill</title>
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <style>
-        body { margin:0; font-family:Arial,Helvetica,sans-serif; background:#f4f4f4; }
-        .topnav { overflow:hidden; background:#333; }
-        .topnav a { float:left; color:#f2f2f2; padding:14px 16px; text-decoration:none; font-size:17px; }
-        .topnav a:hover { background:#ddd; color:black; }
-        .topnav a.active { background:#04AA6D; color:white; }
-        .content { padding:24px; max-width:720px; margin:0 auto; }
-        h2 { color:#333; border-bottom:2px solid #04AA6D; padding-bottom:8px; }
-        .card { background:white; border-radius:8px; padding:24px; box-shadow:0 1px 4px rgba(0,0,0,.08); }
-        label { display:block; font-size:13px; font-weight:bold; color:#555; margin-bottom:5px; margin-top:14px; }
-        input, select { padding:10px 14px; border:1px solid #ccc; border-radius:4px; font-size:14px; width:100%; box-sizing:border-box; }
-        .form-grid { display:grid; grid-template-columns:1fr 1fr; gap:16px; }
-        .form-grid-3 { display:grid; grid-template-columns:1fr 1fr 1fr; gap:16px; }
-        .btn { padding:12px 28px; border:none; border-radius:4px; cursor:pointer; font-size:15px; font-weight:bold; margin-top:20px; }
-        .btn-green { background:#04AA6D; color:white; }
-        .btn-green:hover { background:#038a57; }
-        .msg-error { background:#f8d7da; color:#721c24; padding:12px; border-radius:4px; margin-bottom:16px; }
-        .hint { font-size:12px; color:#888; margin-top:3px; }
-        .section-label { font-size:12px; font-weight:bold; color:#04AA6D; text-transform:uppercase; letter-spacing:.5px; margin-top:20px; margin-bottom:4px; border-top:1px solid #eee; padding-top:16px; }
-        .months { display:grid; grid-template-columns:repeat(6,1fr); gap:8px; margin-top:6px; }
-        .month-btn { padding:8px 4px; border:1px solid #ccc; border-radius:4px; background:white; cursor:pointer; font-size:13px; text-align:center; }
-        .month-btn.selected { background:#04AA6D; color:white; border-color:#04AA6D; }
+        body{margin:0;font-family:Arial,Helvetica,sans-serif;background:#f4f4f4;}
+        .topnav{overflow:hidden;background:#1a1a2e;}
+        .topnav a{float:left;color:#eee;padding:14px 16px;text-decoration:none;font-size:15px;}
+        .topnav a:hover{background:#16213e;color:#04AA6D;}
+        .topnav a.active{background:#04AA6D;color:white;}
+        .content{padding:24px;max-width:760px;margin:0 auto;}
+        h2{color:#1a1a2e;border-bottom:2px solid #04AA6D;padding-bottom:8px;}
+        .card{background:white;border-radius:8px;padding:24px;box-shadow:0 1px 4px rgba(0,0,0,.08);margin-bottom:16px;}
+        label{display:block;font-size:13px;font-weight:bold;color:#555;margin-bottom:5px;margin-top:14px;}
+        input,select{padding:10px 14px;border:1px solid #ccc;border-radius:4px;font-size:14px;width:100%;box-sizing:border-box;}
+        .form-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;}
+        .form-grid-3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px;}
+        .btn{padding:12px 28px;border:none;border-radius:4px;cursor:pointer;font-size:15px;font-weight:bold;margin-top:20px;}
+        .btn-green{background:#04AA6D;color:white;}
+        .btn-green:hover{background:#038a57;}
+        .btn-blue{background:#1a73e8;color:white;margin-left:12px;}
+        .btn-blue:hover{background:#1557b0;}
+        .msg-error{background:#f8d7da;color:#721c24;padding:12px;border-radius:4px;margin-bottom:16px;}
+        .hint{font-size:12px;color:#888;margin-top:3px;}
+        .section-label{font-size:12px;font-weight:bold;color:#04AA6D;text-transform:uppercase;letter-spacing:.5px;margin-top:20px;margin-bottom:4px;border-top:1px solid #eee;padding-top:16px;}
+        .months{display:grid;grid-template-columns:repeat(6,1fr);gap:8px;margin-top:6px;}
+        .month-btn{padding:8px 4px;border:1px solid #ccc;border-radius:4px;background:white;cursor:pointer;font-size:13px;text-align:center;}
+        .month-btn.selected{background:#04AA6D;color:white;border-color:#04AA6D;}
+        .btn-row{display:flex;align-items:center;flex-wrap:wrap;gap:8px;margin-top:20px;}
     </style>
     <script>
     function selectMonth(btn, val) {
         document.querySelectorAll('.month-btn').forEach(b => b.classList.remove('selected'));
         btn.classList.add('selected');
         document.getElementById('monthInput').value = val;
+        document.getElementById('monthInputAll').value = val;
     }
     </script>
 </head>
 <body>
 <div class="topnav">
     <a th:href="@{/newhome}">Home</a>
-    <a th:href="@{/newCylinderEntryF}">New Entry</a>
-    <a class="active" th:href="@{/billing/generate}">Generate Bill</a>
+    <a th:href="@{/newEntryF}">New Entry</a>
+    <a th:href="@{/purchaseEntryF}">Purchase</a>
+    <a th:href="@{/historyHolding}">History</a>
+    <a class="active" th:href="@{/billing/generate}">Billing</a>
     <a th:href="@{/billing/party-accounts}">Party Accounts</a>
     <a th:href="@{/billing/prices}">Prices</a>
     <a th:href="@{/billing/hsn}">HSN Codes</a>
@@ -50,62 +56,113 @@
     <div th:if="${billError}" class="msg-error" th:text="${billError}"></div>
 
     <div class="card">
-        <form th:action="@{/billing/generate}" method="post">
-
-            <div class="form-grid">
-                <div>
-                    <label>Party</label>
-                    <select name="partyName" required>
-                        <option value="">-- Select Party --</option>
-                        <option th:each="p : ${partyNames}" th:value="${p}" th:text="${p}"></option>
-                    </select>
-                </div>
-                <div>
-                    <label>Year</label>
-                    <input type="number" name="year" th:value="${currentYear}" min="2020" max="2099" required/>
-                </div>
+        <!-- Shared year + month selection used by both forms -->
+        <div class="form-grid">
+            <div>
+                <label>Year</label>
+                <input type="number" id="sharedYear" th:value="${currentYear}" min="2020" max="2099"/>
             </div>
+            <div></div>
+        </div>
 
-            <label>Month</label>
-            <input type="hidden" id="monthInput" name="month" th:value="${currentMonth}"/>
-            <div class="months">
-                <button type="button" class="month-btn" th:classappend="${currentMonth==1?' selected':''}" onclick="selectMonth(this,1)">Jan</button>
-                <button type="button" class="month-btn" th:classappend="${currentMonth==2?' selected':''}" onclick="selectMonth(this,2)">Feb</button>
-                <button type="button" class="month-btn" th:classappend="${currentMonth==3?' selected':''}" onclick="selectMonth(this,3)">Mar</button>
-                <button type="button" class="month-btn" th:classappend="${currentMonth==4?' selected':''}" onclick="selectMonth(this,4)">Apr</button>
-                <button type="button" class="month-btn" th:classappend="${currentMonth==5?' selected':''}" onclick="selectMonth(this,5)">May</button>
-                <button type="button" class="month-btn" th:classappend="${currentMonth==6?' selected':''}" onclick="selectMonth(this,6)">Jun</button>
-                <button type="button" class="month-btn" th:classappend="${currentMonth==7?' selected':''}" onclick="selectMonth(this,7)">Jul</button>
-                <button type="button" class="month-btn" th:classappend="${currentMonth==8?' selected':''}" onclick="selectMonth(this,8)">Aug</button>
-                <button type="button" class="month-btn" th:classappend="${currentMonth==9?' selected':''}" onclick="selectMonth(this,9)">Sep</button>
-                <button type="button" class="month-btn" th:classappend="${currentMonth==10?' selected':''}" onclick="selectMonth(this,10)">Oct</button>
-                <button type="button" class="month-btn" th:classappend="${currentMonth==11?' selected':''}" onclick="selectMonth(this,11)">Nov</button>
-                <button type="button" class="month-btn" th:classappend="${currentMonth==12?' selected':''}" onclick="selectMonth(this,12)">Dec</button>
+        <label>Month</label>
+        <input type="hidden" id="monthInput"    name="month" th:value="${currentMonth}"/>
+        <input type="hidden" id="monthInputAll" name="month" th:value="${currentMonth}"/>
+        <div class="months">
+            <button type="button" class="month-btn" th:classappend="${currentMonth==1?' selected':''}"  onclick="selectMonth(this,1)">Jan</button>
+            <button type="button" class="month-btn" th:classappend="${currentMonth==2?' selected':''}"  onclick="selectMonth(this,2)">Feb</button>
+            <button type="button" class="month-btn" th:classappend="${currentMonth==3?' selected':''}"  onclick="selectMonth(this,3)">Mar</button>
+            <button type="button" class="month-btn" th:classappend="${currentMonth==4?' selected':''}"  onclick="selectMonth(this,4)">Apr</button>
+            <button type="button" class="month-btn" th:classappend="${currentMonth==5?' selected':''}"  onclick="selectMonth(this,5)">May</button>
+            <button type="button" class="month-btn" th:classappend="${currentMonth==6?' selected':''}"  onclick="selectMonth(this,6)">Jun</button>
+            <button type="button" class="month-btn" th:classappend="${currentMonth==7?' selected':''}"  onclick="selectMonth(this,7)">Jul</button>
+            <button type="button" class="month-btn" th:classappend="${currentMonth==8?' selected':''}"  onclick="selectMonth(this,8)">Aug</button>
+            <button type="button" class="month-btn" th:classappend="${currentMonth==9?' selected':''}"  onclick="selectMonth(this,9)">Sep</button>
+            <button type="button" class="month-btn" th:classappend="${currentMonth==10?' selected':''}" onclick="selectMonth(this,10)">Oct</button>
+            <button type="button" class="month-btn" th:classappend="${currentMonth==11?' selected':''}" onclick="selectMonth(this,11)">Nov</button>
+            <button type="button" class="month-btn" th:classappend="${currentMonth==12?' selected':''}" onclick="selectMonth(this,12)">Dec</button>
+        </div>
+
+        <div class="section-label">Adjustments (optional — applied to all bills in bulk mode)</div>
+        <div class="form-grid-3">
+            <div>
+                <label>Discount ₹ <span style="color:#999;font-weight:normal">(goodwill)</span></label>
+                <input type="number" id="adj_discount" value="0" min="0" step="0.01"/>
+                <p class="hint">Shown only on the individual party's bill.</p>
             </div>
-            <p class="hint">Invoice date will be set to the last day of the selected month.</p>
-
-            <div class="section-label">Adjustments (optional)</div>
-            <div class="form-grid-3">
-                <div>
-                    <label>Discount ₹ <span style="color:#999;font-weight:normal">(goodwill)</span></label>
-                    <input type="number" name="discount" value="0" min="0" step="0.01"/>
-                    <p class="hint">Shown only on this party's bill.</p>
-                </div>
-                <div>
-                    <label>Security Deposit ₹ <span style="color:#999;font-weight:normal">(deduct)</span></label>
-                    <input type="number" name="security" value="0" min="0" step="0.01"/>
-                    <p class="hint">Prepaid amount to be adjusted.</p>
-                </div>
-                <div>
-                    <label>T/C ₹ <span style="color:#999;font-weight:normal">(add)</span></label>
-                    <input type="number" name="tc" value="0" min="0" step="0.01"/>
-                    <p class="hint">Transport / labour charges.</p>
-                </div>
+            <div>
+                <label>Security Deposit ₹ <span style="color:#999;font-weight:normal">(deduct)</span></label>
+                <input type="number" id="adj_security" value="0" min="0" step="0.01"/>
             </div>
+            <div>
+                <label>T/C ₹ <span style="color:#999;font-weight:normal">(add)</span></label>
+                <input type="number" id="adj_tc" value="0" min="0" step="0.01"/>
+                <p class="hint">Transport / labour charges.</p>
+            </div>
+        </div>
+    </div>
 
-            <button type="submit" class="btn btn-green">&#8659; Download Bill (.xlsx)</button>
+    <!-- Single party form -->
+    <div class="card">
+        <strong>Single Party Bill</strong>
+        <form id="singleForm" th:action="@{/billing/generate}" method="post">
+            <input type="hidden" name="year"     id="singleYear"/>
+            <input type="hidden" name="month"    id="singleMonth"/>
+            <input type="hidden" name="discount" id="singleDiscount"/>
+            <input type="hidden" name="security" id="singleSecurity"/>
+            <input type="hidden" name="tc"       id="singleTc"/>
+            <label>Party</label>
+            <select name="partyName" required style="width:280px">
+                <option value="">-- Select Party --</option>
+                <option th:each="p : ${partyNames}" th:value="${p}" th:text="${p}"></option>
+            </select>
+            <div class="btn-row">
+                <button type="submit" class="btn btn-green"
+                        onclick="syncInputs('single')">&#8659; Download Single Bill</button>
+            </div>
+        </form>
+    </div>
+
+    <!-- All parties form -->
+    <div class="card">
+        <strong>All Parties — Bulk Bill</strong>
+        <p class="hint" style="margin-top:6px">Generates one Excel file with every party that had activity in the selected month. Each party gets its own sheet.</p>
+        <form id="allForm" th:action="@{/billing/generate-all}" method="post">
+            <input type="hidden" name="year"     id="allYear"/>
+            <input type="hidden" name="month"    id="allMonth"/>
+            <input type="hidden" name="discount" id="allDiscount"/>
+            <input type="hidden" name="security" id="allSecurity"/>
+            <input type="hidden" name="tc"       id="allTc"/>
+            <div class="btn-row">
+                <button type="submit" class="btn btn-blue"
+                        onclick="syncInputs('all')">&#8659; Download All Bills (.xlsx)</button>
+            </div>
         </form>
     </div>
 </div>
+
+<script>
+function syncInputs(mode) {
+    const year     = document.getElementById('sharedYear').value;
+    const month    = document.getElementById('monthInput').value;
+    const discount = document.getElementById('adj_discount').value;
+    const security = document.getElementById('adj_security').value;
+    const tc       = document.getElementById('adj_tc').value;
+
+    if (mode === 'single') {
+        document.getElementById('singleYear').value     = year;
+        document.getElementById('singleMonth').value    = month;
+        document.getElementById('singleDiscount').value = discount;
+        document.getElementById('singleSecurity').value = security;
+        document.getElementById('singleTc').value       = tc;
+    } else {
+        document.getElementById('allYear').value     = year;
+        document.getElementById('allMonth').value    = month;
+        document.getElementById('allDiscount').value = discount;
+        document.getElementById('allSecurity').value = security;
+        document.getElementById('allTc').value       = tc;
+    }
+}
+</script>
 </body>
 </html>

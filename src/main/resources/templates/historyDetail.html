@@ -3,6 +3,8 @@
 <head>
     <title>History — Detail View</title>
     <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="_csrf" th:content="${_csrf.token}"/>
+    <meta name="_csrf_header" th:content="${_csrf.headerName}"/>
     <style>
         body{margin:0;font-family:Arial,Helvetica,sans-serif;background:#f4f4f4;}
         .topnav{overflow:hidden;background:#1a1a2e;}
@@ -85,16 +87,24 @@
                     <th>Date</th>
                     <th>Cylinder No.</th>
                     <th>Gas Type</th>
+                    <th>Status</th>
                     <th>Customer</th>
                 </tr>
             </thead>
             <tbody>
                 <tr th:each="row : ${history}">
                     <td th:text="${#dates.format(row.get(0),'dd-MM-yyyy')}"></td>
-                    <td th:if="${viewMode == 'party'}"  th:text="${row.get(3)}"></td>
+                    <!-- party view: date,ctype,fullType,customerName,cylinderNo → cylinderNo=index 4 -->
+                    <!-- cylinder view: date,ctype,fullType,customerName → show selectedCylinder -->
+                    <td th:if="${viewMode == 'party'}"    th:text="${row.get(4)}"></td>
                     <td th:if="${viewMode == 'cylinder'}" th:text="${selectedCylinder}"></td>
                     <td th:text="${row.get(1)}"></td>
-                    <td th:text="${row.get(2)}"></td>
+                    <td>
+                        <span th:text="${row.get(2)}"
+                              th:style="${row.get(2) == 'FULL' ? 'color:#04AA6D;font-weight:bold' : 'color:#cc7000;font-weight:bold'}">
+                        </span>
+                    </td>
+                    <td th:text="${row.get(3)}"></td>
                 </tr>
             </tbody>
         </table>

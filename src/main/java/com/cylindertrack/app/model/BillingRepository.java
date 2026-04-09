@@ -7,29 +7,43 @@ import java.util.Date;
 import java.util.List;
 
 @Repository
-public interface BillingRepository extends JpaRepository<MainCylinderEntry, Long> {
+public interface BillingRepository extends JpaRepository<MainEntry, Long> {
 
     /**
-     * Returns ctype, count(*) for each gas type a party received (FULL only) in a month.
-     * Groups by gas type so one line per type on the bill.
+     * Sum of cfull per gas type for a party in the given month.
+     * Billing is based on purchase/sales entries (MainEntry), not cylinder numbers.
      */
-    @Query("select c.ctype, count(c) " +
-           "from MainCylinderEntry c " +
-           "where c.customerName = ?1 " +
-           "  and c.ctype != 'EMPTY' " +
-           "  and DATE(c.date) >= DATE(?2) " +
-           "  and DATE(c.date) <= DATE(?3) " +
-           "group by c.ctype " +
-           "order by c.ctype")
+    @Query("select e.ctype, sum(e.cfull) " +
+           "from MainEntry e " +
+           "where e.partyName = ?1 " +
+           "  and e.isPurchase = false " +
+           "  and DATE(e.date) >= DATE(?2) " +
+           "  and DATE(e.date) <= DATE(?3) " +
+           "group by e.ctype " +
+           "order by e.ctype")
     List<Object[]> findBillableEntriesGrouped(String partyName, Date fromDate, Date toDate);
 
     /**
-     * All parties who had FULL entries in the given month (for bulk bill generation).
+     * All sales parties with activity in a given month — for bulk generation.
      */
-    @Query("select distinct c.customerName from MainCylinderEntry c " +
-           "where c.ctype != 'EMPTY' " +
-           "  and DATE(c.date) >= DATE(?1) " +
-           "  and DATE(c.date) <= DATE(?2) " +
-           "order by c.customerName")
+    @Query("select distinct e.partyName from MainEntry e " +
+           "where e.isPurchase = false " +
+           "  and DATE(e.date) >= DATE(?1) " +
+           "  and DATE(e.date) <= DATE(?2) " +
+           "order by e.partyName")
     List<String> findPartiesWithActivityInMonth(Date fromDate, Date toDate);
+
+    /**
+     * Cylinder numbers dispatched as FULL to a party for a gas type in the month.
+     * Only FULL movements — not empty returns.
+     */
+    @Query("select c.cylinderNo from MainCylinderEntry c " +
+           "where c.customerName = ?1 " +
+           "  and c.ctype = ?2 " +
+           "  and c.fullType = 'FULL' " +
+           "  and DATE(c.date) >= DATE(?3) " +
+           "  and DATE(c.date) <= DATE(?4) " +
+           "order by c.cylinderNo")
+    List<Long> findCylinderNumbersForBill(String partyName, String gasType,
+                                          Date fromDate, Date toDate);
 }

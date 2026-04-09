@@ -15,6 +15,7 @@ import org.springframework.web.servlet.view.RedirectView;
 
 import java.io.IOException;
 import java.math.BigDecimal;
+import java.text.SimpleDateFormat;
 import java.time.LocalDate;
 import java.util.*;
 
@@ -24,14 +25,22 @@ public class BillingController {
 
     private static final Logger log = LoggerFactory.getLogger(BillingController.class);
 
-    @Autowired private BillingService          billingService;
-    @Autowired private ExcelBillGenerator      excelGenerator;
-    @Autowired private CylinderPriceRepository priceRepository;
-    @Autowired private PartyPriceRepository    partyPriceRepository;
-    @Autowired private PartyNamesRepository    partyNamesRepository;
-    @Autowired private PartyAccountRepository  partyAccountRepository;
-    @Autowired private HsnCodeRepository       hsnCodeRepository;
+    @Autowired private BillingService           billingService;
+    @Autowired private ExcelBillGenerator       excelGenerator;
+    @Autowired private CylinderPriceRepository  priceRepository;
+    @Autowired private PartyPriceRepository     partyPriceRepository;
+    @Autowired private PartyNamesRepository     partyNamesRepository;
+    @Autowired private PartyAccountRepository   partyAccountRepository;
+    @Autowired private HsnCodeRepository        hsnCodeRepository;
     @Autowired private InvoiceCounterRepository invoiceCounterRepository;
+
+    private static final String NAV = "billing/generate";
+
+    // ── Shared nav helper ─────────────────────────────────────────────────────
+
+    private void addNav(Model model) {
+        model.addAttribute("partyNames", partyNamesRepository.getAllPartyNames());
+    }
 
     // ── Prices ────────────────────────────────────────────────────────────────
 
@@ -69,7 +78,7 @@ public class BillingController {
             .orElseGet(() -> { PartyPrice n = new PartyPrice(); n.setPartyName(partyName); n.setGasType(gasType); return n; });
         pp.setPrice(price);
         partyPriceRepository.save(pp);
-        ra.addFlashAttribute("priceSuccess", "Party price for " + partyName + " / " + gasType + " = ₹" + price);
+        ra.addFlashAttribute("priceSuccess", partyName + " / " + gasType + " = ₹" + price);
         return new RedirectView("/billing/prices", true);
     }
 
@@ -87,17 +96,12 @@ public class BillingController {
                                     Model model, HttpServletRequest request) {
         Map<String, ?> flash = RequestContextUtils.getInputFlashMap(request);
         if (flash != null) model.addAttribute("saveSuccess", flash.get("saveSuccess"));
-
         List<String> allParties = partyNamesRepository.getAllPartyNames();
-
-        // Use ?party= param if provided, else pre-load last party
         String preloaded = (party != null && !party.isBlank()) ? party
             : (allParties.isEmpty() ? "" : allParties.get(allParties.size() - 1));
-
         PartyAccount existing = partyAccountRepository.findByPartyName(preloaded)
             .orElse(new PartyAccount());
         if (existing.getPartyName() == null) existing.setPartyName(preloaded);
-
         model.addAttribute("partyAccount", existing);
         model.addAttribute("partyNames",   allParties);
         model.addAttribute("allAccounts",  partyAccountRepository.findAll());
@@ -107,14 +111,11 @@ public class BillingController {
 
     @PostMapping("/party-accounts")
     public RedirectView savePartyAccount(@ModelAttribute PartyAccount pa, RedirectAttributes ra) {
-        // Auto-derive state code + name from GSTIN if not manually set
         if (pa.getGstin() != null && !pa.getGstin().isBlank()) {
-            if (pa.getStateCode() == null || pa.getStateCode().isBlank()) {
+            if (pa.getStateCode() == null || pa.getStateCode().isBlank())
                 pa.setStateCode(BillingService.stateCodeFromGstin(pa.getGstin()));
-            }
-            if (pa.getStateName() == null || pa.getStateName().isBlank()) {
+            if (pa.getStateName() == null || pa.getStateName().isBlank())
                 pa.setStateName(BillingService.stateNameFromGstin(pa.getGstin()));
-            }
         }
         partyAccountRepository.save(pa);
         ra.addFlashAttribute("saveSuccess", "Details saved for " + pa.getPartyName());
@@ -127,14 +128,12 @@ public class BillingController {
     public String hsnPage(Model model, HttpServletRequest request) {
         Map<String, ?> flash = RequestContextUtils.getInputFlashMap(request);
         if (flash != null) model.addAttribute("hsnSuccess", flash.get("hsnSuccess"));
-
         Map<String, String[]> hsnMap = new LinkedHashMap<>();
         for (CylinderTypeF t : CylinderTypeF.values()) hsnMap.put(t.name(), new String[]{"", ""});
-        hsnCodeRepository.findAll().forEach(h ->
-            hsnMap.put(h.getGasType(), new String[]{
-                h.getHsnCode() != null ? h.getHsnCode() : "",
-                h.getDescription() != null ? h.getDescription() : ""
-            }));
+        hsnCodeRepository.findAll().forEach(h -> hsnMap.put(h.getGasType(), new String[]{
+            h.getHsnCode() != null ? h.getHsnCode() : "",
+            h.getDescription() != null ? h.getDescription() : ""
+        }));
         model.addAttribute("hsnMap", hsnMap);
         return "billing/hsn";
     }
@@ -185,6 +184,7 @@ public class BillingController {
         return "billing/generate";
     }
 
+    /** Single party bill — download immediately */
     @PostMapping("/generate")
     public void generateBill(@RequestParam String partyName,
                              @RequestParam int year,
@@ -196,11 +196,40 @@ public class BillingController {
 
         BillSummary bill = billingService.generateBill(partyName, year, month, discount, security, tc);
         byte[] xlsx = excelGenerator.generate(List.of(bill));
-
-        String filename = partyName.replaceAll("[^a-zA-Z0-9]", "_") + "_" +
+        String filename = sanitize(partyName) + "_" +
                           bill.getInvoiceNumber().replace("/", "-") + ".xlsx";
+        writeExcel(response, xlsx, filename);
+    }
+
+    /** Bulk — all parties for the month, one sheet each in a single workbook */
+    @PostMapping("/generate-all")
+    public void generateAllBills(@RequestParam int year,
+                                 @RequestParam int month,
+                                 @RequestParam(defaultValue = "0") BigDecimal discount,
+                                 @RequestParam(defaultValue = "0") BigDecimal security,
+                                 @RequestParam(defaultValue = "0") BigDecimal tc,
+                                 HttpServletResponse response) throws IOException {
+
+        List<BillSummary> bills = billingService.generateAllBills(year, month, discount, security, tc);
+        if (bills.isEmpty()) {
+            response.sendError(404, "No entries found for the selected month.");
+            return;
+        }
+        byte[] xlsx = excelGenerator.generate(bills);
+        String monthStr = String.format("%02d", month);
+        String filename = "ALL_BILLS_" + year + "_" + monthStr + ".xlsx";
+        writeExcel(response, xlsx, filename);
+    }
+
+    // ── helpers ───────────────────────────────────────────────────────────────
+
+    private void writeExcel(HttpServletResponse response, byte[] xlsx, String filename) throws IOException {
         response.setContentType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
         response.setHeader("Content-Disposition", "attachment; filename=" + filename);
         response.getOutputStream().write(xlsx);
+    }
+
+    private String sanitize(String name) {
+        return name.replaceAll("[^a-zA-Z0-9_]", "_");
     }
 }
