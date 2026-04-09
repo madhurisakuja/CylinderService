@@ -218,6 +218,9 @@ public class MainController {
         all.addAll(partyNamesRepo.getAllPartyNamesPurchaser());
         model.addAttribute("partyNames", all);
         model.addAttribute("gasTypes", Arrays.stream(CylinderTypeF.values()).map(Enum::name).toList());
+        Date defDate = mainEntryRepo.getLatestEntryDate();
+        model.addAttribute("defaultDate", defDate != null
+            ? new SimpleDateFormat("yyyy-MM-dd").format(defDate) : "");
         return "cylinderNumbers";
     }
 
