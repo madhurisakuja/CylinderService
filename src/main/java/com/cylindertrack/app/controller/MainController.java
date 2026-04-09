@@ -293,6 +293,7 @@ public class MainController {
                 ce.setCylinderNo(cylinderNo);
                 ce.setCustomerName(partyName);
                 ce.setCtype(ctype);
+                ce.setFullType(status);   // FULL or EMPTY — persisted separately from gas type
                 ce.setDate(date);
                 cylinderRepo.saveAndFlush(ce);
                 saved++;
