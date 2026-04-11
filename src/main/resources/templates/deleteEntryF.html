@@ -20,22 +20,34 @@ select,input[type=date],input[type=number]{padding:10px 12px;border:1px solid #c
 </head>
 <body>
 <div class="topnav">
-    <a th:href="@{/newhome}">Home</a><a th:href="@{/newEntryF}">New Entry</a>
-    <a th:href="@{/purchaseEntryF}">Purchase</a><a th:href="@{/historyHolding}">History</a>
+    <a th:href="@{/newhome}">Home</a>
+    <a th:href="@{/newEntryF}">New Entry</a>
+    <a th:href="@{/purchaseEntryF}">Purchase</a>
+    <a th:href="@{/cylinderNumbers}">Cylinder Numbers</a>
+    <a th:href="@{/historyHolding}">History</a>
     <a class="active" th:href="@{/deleteEntryF}">Delete</a>
-    <a th:href="@{/newPartyEntryF}">Parties</a><a th:href="@{/billing/generate}">Billing</a>
+    <a th:href="@{/newPartyEntryF}">Parties</a>
+    <a th:href="@{/billing/generate}">Billing</a>
 </div>
 <div class="content">
     <h2>Delete Entry</h2>
     <div th:if="${deleteSuccess}" class="msg-success">Entry deleted successfully.</div>
     <div class="card">
         <form id="delForm" th:action="@{/deleteEntryF}" method="post">
+           
             <label>Party Name</label>
-            <input list="partyList" name="partyName" id="partyInput" placeholder="Type or select party..." required
-                   onchange="loadCylinders()" oninput="loadCylinders()"/>
-            <datalist id="partyList">
-                <option th:each="p : ${partyNames}" th:value="${p}"></option>
-            </datalist>
+<input type="text" 
+       th:field="*{partyName}" 
+       id="partyInput" 
+       list="partyList" 
+       placeholder="Type or select party..." 
+       required
+       autocomplete="off"
+       oninput="loadCylinders()" />
+
+<datalist id="partyList">
+    <option th:each="p : ${partyNames}" th:value="${p}"></option>
+</datalist>
             <label>Date</label>
             <input type="date" name="date" id="dateInput" required onchange="loadCylinders()"/>
             <div class="cyl-section">
@@ -64,6 +76,17 @@ async function loadCylinders() {
     const party = document.getElementById('partyInput').value.trim();
     const date  = document.getElementById('dateInput').value;
     if (!party || !date) return;
+
+    const datalist = document.getElementById('partyList');
+    const options = Array.from(datalist.options).map(opt => opt.value);
+
+    // If the input has a value but it's not in our list
+    if (party && !options.includes(party) {
+        // Optional: you can let them keep typing, 
+        // but don't execute the backend load until it's a valid match
+        return; 
+    }
+
     const resp = await fetch(`/deleteEntryF/cylinders?partyName=${encodeURIComponent(party)}&date=${date}`);
     const cyls = await resp.json();
     const sel = document.getElementById('cylSelect');

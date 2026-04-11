@@ -4,28 +4,26 @@
     <title>Party Account Details</title>
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <style>
-        body { margin:0; font-family:Arial,Helvetica,sans-serif; background:#f4f4f4; }
-        .topnav { overflow:hidden; background:#333; }
-        .topnav a { float:left; color:#f2f2f2; padding:14px 16px; text-decoration:none; font-size:17px; }
-        .topnav a:hover { background:#ddd; color:black; }
-        .topnav a.active { background:#04AA6D; color:white; }
-        .content { padding:24px; max-width:900px; margin:0 auto; }
-        h2 { color:#333; border-bottom:2px solid #04AA6D; padding-bottom:8px; }
-        h3 { color:#555; margin-top:24px; }
-        .card { background:white; border-radius:8px; padding:20px; margin-bottom:20px; box-shadow:0 1px 4px rgba(0,0,0,.08); }
-        label { display:block; font-size:13px; font-weight:bold; color:#555; margin-bottom:4px; margin-top:12px; }
-        input[type=text], textarea, select { width:100%; padding:10px 12px; border:1px solid #ccc; border-radius:4px; font-size:14px; box-sizing:border-box; }
-        textarea { height:80px; resize:vertical; }
-        .btn { padding:10px 24px; border:none; border-radius:4px; cursor:pointer; font-size:15px; font-weight:bold; }
-        .btn-green { background:#04AA6D; color:white; margin-top:16px; }
-        .btn-green:hover { background:#038a57; }
-        .msg-success { background:#d4edda; color:#155724; padding:12px; border-radius:4px; margin-bottom:16px; }
-        table { width:100%; border-collapse:collapse; font-size:13px; }
-        th { background:#04AA6D; color:white; padding:8px 10px; text-align:left; }
-        td { padding:8px 10px; border-bottom:1px solid #eee; }
-        .form-row { display:grid; grid-template-columns:1fr 1fr; gap:16px; }
-        .state-badge { display:inline-block; background:#e8f5e9; color:#2e7d32; padding:4px 10px; border-radius:4px; font-size:13px; margin-top:4px; }
-        .hint { font-size:12px; color:#888; margin-top:3px; }
+        body{margin:0;font-family:Arial,Helvetica,sans-serif;background:#f4f4f4;}
+        .topnav{overflow:hidden;background:#1a1a2e;}
+        .topnav a{float:left;color:#eee;padding:14px 16px;text-decoration:none;font-size:15px;}
+        .topnav a:hover{background:#16213e;color:#04AA6D;}
+        .topnav a.active{background:#04AA6D;color:white;}
+        .content{padding:24px;max-width:900px;margin:0 auto;}
+        h2{color:#1a1a2e;border-bottom:2px solid #04AA6D;padding-bottom:8px;}
+        h3{color:#555;margin-top:24px;}
+        .card{background:white;border-radius:8px;padding:20px;margin-bottom:20px;box-shadow:0 1px 4px rgba(0,0,0,.08);}
+        table{width:100%;border-collapse:collapse;}
+        th{background:#04AA6D;color:white;padding:10px 12px;text-align:left;}
+        td{padding:9px 12px;border-bottom:1px solid #eee;vertical-align:middle;}
+        tr:last-child td{border-bottom:none;}
+        input[type=text],select{padding:8px 12px;border:1px solid #ccc;border-radius:4px;font-size:14px;}
+        .btn{padding:8px 18px;border:none;border-radius:4px;cursor:pointer;font-size:13px;font-weight:bold;}
+        .btn-green{background:#04AA6D;color:white;} .btn-green:hover{background:#038a57;}
+        .btn-red{background:#cc0000;color:white;}   .btn-red:hover{background:#990000;}
+        .msg-success{background:#d4edda;color:#155724;padding:12px;border-radius:4px;margin-bottom:16px;}
+        .inline{display:flex;gap:8px;align-items:center;flex-wrap:wrap;}
+        .hint{font-size:12px;color:#888;margin-top:8px;}
     </style>
     <script th:inline="javascript">
         // State code map injected from server
@@ -55,12 +53,11 @@
 <body>
 <div class="topnav">
     <a th:href="@{/newhome}">Home</a>
-    <a th:href="@{/newCylinderEntryF}">New Entry</a>
-    <a th:href="@{/billing/generate}">Generate Bill</a>
+    <a th:href="@{/newEntryF}">New Entry</a>
+    <a th:href="@{/purchaseEntryF}">Purchase</a>
+    <a th:href="@{/historyHolding}">History</a>
+    <a th:href="@{/billing/generate}">Billing</a>
     <a class="active" th:href="@{/billing/party-accounts}">Party Accounts</a>
-    <a th:href="@{/billing/prices}">Prices</a>
-    <a th:href="@{/billing/hsn}">HSN Codes</a>
-    <a th:href="@{/billing/counter}">Invoice Counter</a>
 </div>
 <div class="content">
     <h2>Party Account Details</h2>

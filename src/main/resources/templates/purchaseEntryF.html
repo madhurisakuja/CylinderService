@@ -125,6 +125,7 @@ async function submitEntry() {
     if (data.errors.length) html += `<div class="msg-error">Issues: ${data.errors.join('<br/>')}</div>`;
     document.getElementById('result-content').innerHTML = html;
     if (data.saved.length && !data.errors.length) document.getElementById('rows').innerHTML = '';
+    count=0;
 }
 addRow();
 </script>

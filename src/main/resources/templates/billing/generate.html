@@ -25,15 +25,14 @@ input,select{padding:10px 12px;border:1px solid #ccc;border-radius:4px;font-size
 </head>
 <body>
 <div class="topnav">
-    <a th:href="@{/newhome}">Home</a><a th:href="@{/newEntryF}">New Entry</a>
-    <a th:href="@{/historyHolding}">History</a>
+    <a th:href="@{/newhome}">Home</a>
     <a class="active" th:href="@{/billing/generate}">Billing</a>
     <a th:href="@{/billing/custom-template}">Custom Template</a>
     <a th:href="@{/billing/party-accounts}">Party Accounts</a>
     <a th:href="@{/billing/prices}">Prices</a>
     <a th:href="@{/billing/labels}">Labels</a>
     <a th:href="@{/billing/hsn}">HSN</a>
-    <a th:href="@{/billing/counter}">Counter</a>
+    <a th:href="@{/billing/counter}">Invoice Counter</a>
 </div>
 <div class="content">
     <h2>Generate Bill</h2>
@@ -64,9 +63,20 @@ input,select{padding:10px 12px;border:1px solid #ccc;border-radius:4px;font-size
             <input type="hidden" name="discount" id="sd"/>
             <input type="hidden" name="security" id="ss"/>
             <input type="hidden" name="tc"       id="stc"/>
-            <label>Party</label>
-            <input list="partyDatalist" name="partyName" id="singleParty" placeholder="Type or select party..." required/>
-            <datalist id="partyDatalist"><option th:each="p : ${partyNames}" th:value="${p}"></option></datalist>
+          
+            <label for="singleParty">Party</label>
+            <input type="text" 
+                id="singleParty" 
+                name="partyName" 
+                list="partyDatalist" 
+                placeholder="Type or select party..." 
+                autocomplete="off"
+                required 
+                onchange="validateAndLoad()"/>
+
+            <datalist id="partyDatalist">
+                <option th:each="p : ${partyNames}" th:value="${p}"></option>
+            </datalist>
             <div class="section-lbl">Adjustments (optional)</div>
             <div class="form-grid-3">
                 <div><label>Discount ₹ <span style="color:#999;font-weight:normal">(goodwill)</span></label>
@@ -120,6 +130,19 @@ function previewBill(){
     const s = document.getElementById('securityInput').value;
     const t = document.getElementById('tcInput').value;
     window.open(`/billing/preview?partyName=${encodeURIComponent(party)}&fromDate=${from}&toDate=${to}&discount=${d}&security=${s}&tc=${t}`, '_blank');
+}
+function validateAndLoad() {
+    const input = document.getElementById('singleParty');
+    const datalist = document.getElementById('partyDatalist');
+    
+    // Convert datalist options into a simple array
+    const validOptions = Array.from(datalist.options).map(opt => opt.value);
+
+    if (input.value && !validOptions.includes(input.value)) {
+        alert("Please select a valid party from the list.");
+        input.value = ""; // Clear invalid text
+        return;
+    }
 }
 // Default to current month
 const now = new Date();

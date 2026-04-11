@@ -3,6 +3,8 @@
 <head>
     <title>New Cylinder Entry</title>
     <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="_csrf" th:content="${_csrf.token}"/>
+    <meta name="_csrf_header" th:content="${_csrf.headerName}"/>
     <style>
         body { margin: 0; font-family: Arial, Helvetica, sans-serif; }
         .topnav { overflow: hidden; background-color: #333; }
@@ -50,9 +52,22 @@
 
     <form th:action="@{/newCylinderEntryF}" th:object="${entry}" method="post">
         <label>Customer Name:</label><br/>
-        <select th:field="*{customerName}">
+        <!--select th:field="*{customerName}">
             <option th:each="name : ${partyNames}" th:value="${name}" th:text="${name}"></option>
         </select><br/>
+        <label>Customer Name:</label><br/-->
+        
+        <input list="partyNamesList" 
+       th:field="*{customerName}" 
+       id="customerNameInput" 
+       placeholder="Type to search party..." 
+       autocomplete="off" 
+       required 
+       onchange="checkValidParty()"/><br/>
+
+        <datalist id="partyNamesList">
+         <option th:each="name : ${partyNames}" th:value="${name}" th:text="${name}"></option>
+        </datalist>
 
         <label>Date:</label><br/>
         <input type="date" th:field="*{date}"/><br/>
@@ -74,5 +89,23 @@
         <input type="submit" value="SUBMIT"/>
     </form>
 </div>
+<script th:inline="javascript">
+    function checkValidParty() {
+        const csrfToken = document.querySelector('meta[name="_csrf"]').getAttribute('content');
+        const csrfHeader = document.querySelector('meta[name="_csrf_header"]').getAttribute('content');
+    const input = document.getElementById('customerNameInput');
+    const datalist = document.getElementById('partyNamesList');
+    
+    // Create an array of valid values from the datalist
+    const validOptions = Array.from(datalist.options).map(opt => opt.value);
+
+    // Strict Check: If the typed value isn't in our list, reset it
+    if (input.value && !validOptions.includes(input.value)) {
+        alert("Invalid Party! Please select an existing party from the list.");
+        input.value = ""; // Clear the input
+        input.focus();
+    }
+}
+    </script>
 </body>
 </html>

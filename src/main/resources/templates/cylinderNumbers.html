@@ -53,14 +53,22 @@
         <div class="filter-row">
             <div>
                 <label>Party</label>
-                <select id="filterParty" style="width:100%">
-                    <option value="">-- Select Party --</option>
-                    <option th:each="p : ${partyNames}" th:value="${p}" th:text="${p}"></option>
-                </select>
+
+                <input list="partyNamesList" 
+                th:field="*{customerName}" 
+                id="filterParty" 
+                placeholder="Type to search party..." 
+                autocomplete="off" 
+                required 
+                onchange="checkValidParty()"/><br/>
+         
+                 <datalist id="partyNamesList">
+                  <option th:each="name : ${partyNames}" th:value="${name}" th:text="${name}"></option>
+                 </datalist>
             </div>
             <div>
                 <label>Date of Entry</label>
-                <input type="date" id="filterDate" style="width:100%"/>
+                <input type="date" id="filterDate" style="width:100%", value="${defaultDate}"/>
             </div>
             <div>
                 <label>&nbsp;</label>
@@ -82,10 +90,24 @@
 </div>
 <script>
 let pendingRows = [];
+const csrfToken = document.querySelector('meta[name="_csrf"]').getAttribute('content');
+const csrfHeader = document.querySelector('meta[name="_csrf_header"]').getAttribute('content');
+function checkValidParty() {
+    
+    const input = document.getElementById('filterParty');
+    const datalist = document.getElementById('partyNamesList');
+    
+    // Create an array of valid values from the datalist
+    const validOptions = Array.from(datalist.options).map(opt => opt.value);
+
+    // Strict Check: If the typed value isn't in our list, reset it
+    if (input.value && !validOptions.includes(input.value)) {
+        alert("Invalid Party! Please select an existing party from the list.");
+        input.value = ""; // Clear the input
+        input.focus();
+    }
 
 async function loadEntries() {
-    const csrfToken = document.querySelector('meta[name="_csrf"]').getAttribute('content');
-    const csrfHeader = document.querySelector('meta[name="_csrf_header"]').getAttribute('content');
     const party = document.getElementById('filterParty').value;
     const date  = document.getElementById('filterDate').value;
     if (!party || !date) { alert('Select both party and date.'); return; }

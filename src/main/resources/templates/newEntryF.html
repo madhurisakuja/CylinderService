@@ -47,54 +47,6 @@
     <a th:href="@{/newPartyEntryF}">Parties</a>
     <a th:href="@{/billing/generate}">Billing</a>
 </div>
-<!--div class="content">
-    <h2>New Sales Entry</h2>
-
-    <div class="card">
-        <div class="top-row">
-            <div>
-                <label>Party Name</label>
-                <input list="partyDatalist" id="partyName" name="partyName" placeholder="Type or select party..." style="width:100%">
-                    <option value="">-- Select Party --</option>
-                    
-                </select>
-            </div>
-            <div>
-                <label>Date</label>
-                <input type="date" id="entryDate" th:value="${defaultDate}"/>
-            </div>
-        </div>
-
-        
-        <div class="section-title">Full Cylinders Sent Out</div>
-        <div class="row-header">
-            <span>Gas Type</span><span>Qty Full</span><span>Qty Empty</span><span>Remarks</span><span></span>
-        </div>
-        <div id="fullRows"></div>
-        <button type="button" class="btn btn-outline" onclick="addRow('full')" style="margin-bottom:20px">+ Add Gas Type</button>
-
-        
-        <label class="toggle-empty">
-            <input type="checkbox" id="hasEmpty" onchange="toggleEmpty(this)"/>
-            Also recording empty returns?
-        </label>
-
-        <div class="empty-section" id="emptySection">
-            <div class="section-title" style="color:#cc7000">Empty Returns</div>
-            <div class="row-header">
-                <span>Gas Type</span><span>Qty Full</span><span>Qty Empty</span><span>Remarks</span><span></span>
-            </div>
-            <div id="emptyRows"></div>
-            <button type="button" class="btn btn-outline" onclick="addRow('empty')" style="margin-bottom:16px;border-color:#cc7000;color:#cc7000">+ Add Empty Type</button>
-        </div>
-
-        <div id="result-box">
-            <div id="result-content"></div>
-        </div>
-
-        <button class="btn btn-green" onclick="submitEntry()" style="margin-top:16px">Submit All Entries</button>
-    </div>
-</div-->
 <div class="content">
     <h2>New Sales Entry</h2>
 
@@ -102,10 +54,23 @@
         <div class="top-row">
             <div>
                 <label>Party Name</label>
-                <input list="partyDatalist" id="partyName" name="partyName" placeholder="Type or select party..." style="width:100%">
+                <!--input list="partyDatalist" id="partyName" name="partyName" placeholder="Type or select party..." style="width:100%">
                     <option value="">-- Select Party --</option>
                     
-                </select>
+                </select-->
+
+                <input list="partyDatalist" 
+                th:field="*{customerName}" 
+                id="partyName" 
+                placeholder="Type to search party..." 
+                autocomplete="off" 
+                required 
+                onchange="checkValidParty()"/><br/>
+         
+                 <datalist id="partyNamesList">
+                  <option th:each="name : ${partyNames}" th:value="${name}" th:text="${name}"></option>
+                 </datalist>
+
             </div>
             <div>
                 <label>Date</label>
@@ -130,95 +95,27 @@
     </div>
 </div>
 
-<!--script th:inline="javascript">
-const gasTypes = /*[[${gasTypes}]]*/ [];
-
-function makeRow(containerId, defaultType) {
-    const container = document.getElementById(containerId);
-    const div = document.createElement('div');
-    div.className = 'row-grid';
-    div.innerHTML = `
-        <select class="ctype-sel">
-            ${gasTypes.map(t => `<option value="${t}" ${t===defaultType?'selected':''}>${t}</option>`).join('')}
-        </select>
-        <input type="number" class="cfull-inp" value="0" min="0"/>
-        <input type="number" class="cempty-inp" value="0" min="0"/>
-        <input type="text" class="remarks-inp" placeholder="Optional"/>
-        <button class="btn-remove" onclick="this.parentElement.remove()">×</button>
-    `;
-    container.appendChild(div);
-}
-
-let fullCount = 0;
-function addRow(section) {
-    const defaults = ['OXY','CO2','LPG','DA','ARGON','ARGOSHIELD','NITROGEN'];
-    const containerId = section === 'full' ? 'fullRows' : 'emptyRows';
-    makeRow(containerId, defaults[fullCount++ % defaults.length]);
-}
-
-function toggleEmpty(cb) {
-    document.getElementById('emptySection').classList.toggle('visible', cb.checked);
-}
-
-function collectRows(containerId) {
-    return Array.from(document.getElementById(containerId).querySelectorAll('.row-grid')).map(row => ({
-        partyName: document.getElementById('partyName').value,
-        date:      document.getElementById('entryDate').value,
-        ctype:     row.querySelector('.ctype-sel').value,
-        cfull:     row.querySelector('.cfull-inp').value,
-        cempty:    row.querySelector('.cempty-inp').value,
-        remarks:   row.querySelector('.remarks-inp').valueå
-    }));
-}
-
-async function submitEntry() {
-    const party = document.getElementById('partyName').value;
-    const date  = document.getElementById('entryDate').value;
-    if (!party || !date) { alert('Please select a party and date first.'); return; }
-
-    const rows = [
-        ...collectRows('fullRows'),
-        ...(document.getElementById('hasEmpty').checked ? collectRows('emptyRows') : [])
-    ].filter(r => parseInt(r.cfull)||parseInt(r.cempty));
-
-    if (!rows.length) { alert('Add at least one row with a non-zero quantity.'); return; }
-
-    const resp = await fetch('/newEntryF', {
-        method: 'POST',
-        headers: {'Content-Type':'application/json'},
-        body: JSON.stringify(rows)
-    });
-    const data = await resp.json();
-
-    const box = document.getElementById('result-box');
-    const content = document.getElementById('result-content');
-    box.style.display = 'block';
-
-    let html = '';
-    if (data.saved.length)
-        html += `<div class="msg-success">Saved: ${data.saved.join(', ')}</div>`;
-    if (data.errors.length)
-        html += `<div class="msg-error">Issues: ${data.errors.join('<br/>')}</div>`;
-    content.innerHTML = html;
-
-    if (data.saved.length && !data.errors.length) {
-        document.getElementById('fullRows').innerHTML = '';
-        document.getElementById('emptyRows').innerHTML = '';
-        document.getElementById('hasEmpty').checked = false;
-        document.getElementById('emptySection').classList.remove('visible');
-    }
-}
-
-// Start with one row
-//addRow('full');
-document.addEventListener('DOMContentLoaded', () => {
-    addRow('full');
-});
-</script-->
 <script th:inline="javascript">
     const gasTypes = /*[[${gasTypes}]]*/ [];
     let rowCount = 0;
+    const csrfToken = document.querySelector('meta[name="_csrf"]').getAttribute('content');
+    const csrfHeader = document.querySelector('meta[name="_csrf_header"]').getAttribute('content');
+  
+    function checkValidParty() {
+
+    const input = document.getElementById('partyName');
+    const datalist = document.getElementById('partyDatalist');
     
+    // Create an array of valid values from the datalist
+    const validOptions = Array.from(datalist.options).map(opt => opt.value);
+
+    // Strict Check: If the typed value isn't in our list, reset it
+    if (input.value && !validOptions.includes(input.value)) {
+        alert("Invalid Party! Please select an existing party from the list.");
+        input.value = ""; // Clear the input
+        input.focus();
+    }
+
     function addRow() {
         const defaults = ['OXY','CO2','LPG','DA','ARGON','ARGOSHIELD','NITROGEN'];
         const defaultType = defaults[rowCount++ % defaults.length];
@@ -239,8 +136,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     
     async function submitEntry() {
-    const csrfToken = document.querySelector('meta[name="_csrf"]').getAttribute('content');
-    const csrfHeader = document.querySelector('meta[name="_csrf_header"]').getAttribute('content');
+   
    
         const party = document.getElementById('partyName').value;
         const date  = document.getElementById('entryDate').value;

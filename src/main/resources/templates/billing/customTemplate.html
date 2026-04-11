@@ -3,6 +3,8 @@
 <head>
     <title>Custom Bill Template</title>
     <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="_csrf" th:content="${_csrf.token}"/>
+    <meta name="_csrf_header" th:content="${_csrf.headerName}"/>
     <style>
         body{margin:0;font-family:Arial,Helvetica,sans-serif;background:#f4f4f4;}
         .topnav{overflow:hidden;background:#1a1a2e;}
@@ -25,14 +27,13 @@
 <body>
 <div class="topnav">
     <a th:href="@{/newhome}">Home</a>
-    <a th:href="@{/newEntryF}">New Entry</a>
-    <a th:href="@{/purchaseEntryF}">Purchase</a>
-    <a th:href="@{/historyHolding}">History</a>
     <a class="active" th:href="@{/billing/generate}">Billing</a>
+    <a th:href="@{/billing/custom-template}">Custom Template</a>
     <a th:href="@{/billing/party-accounts}">Party Accounts</a>
     <a th:href="@{/billing/prices}">Prices</a>
     <a th:href="@{/billing/labels}">Labels</a>
     <a th:href="@{/billing/hsn}">HSN</a>
+    <a th:href="@{/billing/counter}">Invoice Counter</a>
 </div>
 <div class="content">
     <h2>Custom Bill Template</h2>
@@ -51,13 +52,40 @@
     <div class="card">
         <form th:action="@{/billing/custom-template}" method="post">
             <label>Party</label>
-            <input list="partyList" name="partyName" placeholder="Type or select party…" required autocomplete="off"/>
+            <input type="text" 
+                   th:field="*{partyName}" 
+                   id="partyInput" 
+                   list="partyList" 
+                   placeholder="Type or select party..." 
+                   required
+                   autocomplete="off"
+                   oninput="verifyandLoad()" />
+            
             <datalist id="partyList">
                 <option th:each="p : ${partyNames}" th:value="${p}"></option>
             </datalist>
+
             <button type="submit" class="btn btn-blue">&#8659; Download Template (.xlsx)</button>
         </form>
     </div>
 </div>
+<script th:inline="javascript">
+    function checkValidParty() {
+        const csrfToken = document.querySelector('meta[name="_csrf"]').getAttribute('content');
+        const csrfHeader = document.querySelector('meta[name="_csrf_header"]').getAttribute('content');
+    const input = document.getElementById('customerNameInput');
+    const datalist = document.getElementById('partyNamesList');
+    
+    // Create an array of valid values from the datalist
+    const validOptions = Array.from(datalist.options).map(opt => opt.value);
+
+    // Strict Check: If the typed value isn't in our list, reset it
+    if (input.value && !validOptions.includes(input.value)) {
+        alert("Invalid Party! Please select an existing party from the list.");
+        input.value = ""; // Clear the input
+        input.focus();
+    }
+}
+    </script>
 </body>
 </html>
