@@ -59,7 +59,7 @@ public class MainController {
     @GetMapping("/newPartyEntryF")
     public String newPartyGet(Model model) {
         model.addAttribute("entryParty", new PartyNames());
-        model.addAttribute("allParties", partyNamesRepo.getAllPartyNamesAll());
+        model.addAttribute("allParties", partyNamesRepo.findAll());  // full objects for UOM display
         return "newPartyEntryF";
     }
     @PostMapping("/newPartyEntryF")
@@ -182,7 +182,10 @@ public class MainController {
     @GetMapping("/deleteEntryF")
     public String deleteEntryGet(Model model, HttpServletRequest request) {
         Map<String, ?> flash = RequestContextUtils.getInputFlashMap(request);
-        if (flash != null) model.addAttribute("deleteSuccess", flash.get("deleteSuccess"));
+        if (flash != null) {
+            model.addAttribute("deleteSuccess", flash.get("deleteSuccess"));
+            model.addAttribute("cylinders",     flash.get("cylinders"));
+        }
         Date defDate = mainEntryRepo.getLatestEntryDate();
         MainEntry entry = new MainEntry();
         if (defDate != null) entry.setDate(defDate);
@@ -193,12 +196,32 @@ public class MainController {
         return "deleteEntryF";
     }
 
+    /** AJAX: load cylinder numbers for a party+date so the delete page can show a dropdown */
+    @GetMapping("/deleteEntryF/cylinders")
+    @ResponseBody
+    public List<Long> getCylindersForDelete(
+            @RequestParam String partyName,
+            @RequestParam @DateTimeFormat(pattern = "yyyy-MM-dd") Date date) {
+        return cylinderRepo.findCylinderNumbersByPartyAndDate(partyName, date);
+    }
+
     @PostMapping("/deleteEntryF")
-    public RedirectView deleteEntryPost(@ModelAttribute MainEntry entry, RedirectAttributes ra) {
-        mainEntryRepo.deleteByPartyAndDate(entry.getPartyName(), entry.getDate());
-        log.info("Deleted entries for party={} date={}", entry.getPartyName(), entry.getDate());
-        //There is a possibility to not have cylinder entries made yet and its ok.
-        cylinderRepo.deleteByPartyAndDate(entry.getPartyName(), entry.getDate());
+    public RedirectView deleteEntryPost(
+            @RequestParam String partyName,
+            @RequestParam @DateTimeFormat(pattern = "yyyy-MM-dd") Date date,
+            @RequestParam(required = false) Long cylinderNo,
+            RedirectAttributes ra) {
+
+        if (cylinderNo != null) {
+            // Delete only the specific cylinder entry
+            cylinderRepo.deleteByPartyDateAndCylinder(partyName, date, cylinderNo);
+            log.info("Deleted cylinder entry: party={} date={} cylinder={}", partyName, date, cylinderNo);
+        } else {
+            // Delete all entries for party+date (both main_entry and cylinder_entries)
+            mainEntryRepo.deleteByPartyAndDate(partyName, date);
+            cylinderRepo.deleteByPartyAndDate(partyName, date);
+            log.info("Deleted all entries for party={} date={}", partyName, date);
+        }
         ra.addFlashAttribute("deleteSuccess", true);
         return new RedirectView("/deleteEntryF", true);
     }
@@ -319,22 +342,30 @@ public class MainController {
     @GetMapping("/historyHolding")
     public String historyHolding(
             @RequestParam(required = false) String partyName,
+            @RequestParam(required = false) @DateTimeFormat(pattern = "yyyy-MM-dd") Date fromDate,
+            @RequestParam(required = false) @DateTimeFormat(pattern = "yyyy-MM-dd") Date toDate,
             Model model) {
 
-        model.addAttribute("partyNames", partyNamesRepo.getAllPartyNamesAll());
+        model.addAttribute("partyNames",    partyNamesRepo.getAllPartyNamesAll());
         model.addAttribute("selectedParty", partyName);
+        model.addAttribute("fromDate", fromDate != null ? new SimpleDateFormat("yyyy-MM-dd").format(fromDate) : "");
+        model.addAttribute("toDate",   toDate   != null ? new SimpleDateFormat("yyyy-MM-dd").format(toDate)   : "");
+
+        boolean hasRange = fromDate != null && toDate != null;
 
         if (partyName != null && !partyName.isBlank()) {
-            // All entries grouped by type for the selected party
             Map<String, List<MainEntry>> byType = new LinkedHashMap<>();
             for (CylinderTypeF t : CylinderTypeF.values()) {
-                List<MainEntry> entries = mainEntryRepo.findByPartyNameAndType(partyName, t.name());
+                List<MainEntry> entries = hasRange
+                    ? mainEntryRepo.findByPartyTypeAndDateRange(partyName, t.name(), fromDate, toDate)
+                    : mainEntryRepo.findByPartyNameAndType(partyName, t.name());
                 if (!entries.isEmpty()) byType.put(t.name(), entries);
             }
             model.addAttribute("byType", byType);
         } else {
-            // All-parties holding summary
-            model.addAttribute("holdingSummary", mainEntryRepo.getCurrentHoldingSummary());
+            model.addAttribute("holdingSummary", hasRange
+                ? mainEntryRepo.getCurrentHoldingSummaryForRange(fromDate, toDate)
+                : mainEntryRepo.getCurrentHoldingSummary());
         }
         return "historyHolding";
     }
@@ -345,18 +376,34 @@ public class MainController {
     public String historyDetail(
             @RequestParam(required = false) String partyName,
             @RequestParam(required = false) Long cylinderNo,
+            @RequestParam(required = false) @DateTimeFormat(pattern = "yyyy-MM-dd") Date fromDate,
+            @RequestParam(required = false) @DateTimeFormat(pattern = "yyyy-MM-dd") Date toDate,
             Model model, HttpServletRequest request) {
 
         Map<String, ?> flash = RequestContextUtils.getInputFlashMap(request);
-        model.addAttribute("partyNames", partyNamesRepo.getAllPartyNamesAll());
-        model.addAttribute("selectedParty",   partyName);
+        model.addAttribute("partyNames",       partyNamesRepo.getAllPartyNamesAll());
+        model.addAttribute("selectedParty",    partyName);
         model.addAttribute("selectedCylinder", cylinderNo);
+        model.addAttribute("fromDate", fromDate != null ? new SimpleDateFormat("yyyy-MM-dd").format(fromDate) : "");
+        model.addAttribute("toDate",   toDate   != null ? new SimpleDateFormat("yyyy-MM-dd").format(toDate)   : "");
 
-        if (partyName != null && !partyName.isBlank()) {
-            model.addAttribute("history", cylinderRepo.findAllByParty(partyName));
+        boolean hasRange = fromDate != null && toDate != null;
+
+        if (flash != null && flash.get("history") != null) {
+            model.addAttribute("history",          flash.get("history"));
+            model.addAttribute("viewMode",         flash.get("viewMode") != null ? flash.get("viewMode") : "party");
+            model.addAttribute("issueReadingData", flash.get("issueReadingData"));
+            model.addAttribute("inRotationResult", flash.get("inRotationResult"));
+            model.addAttribute("offsetDate",       flash.get("offsetDate"));
+        } else if (partyName != null && !partyName.isBlank()) {
+            model.addAttribute("history", hasRange
+                ? cylinderRepo.findAllByPartyAndDateRange(partyName, fromDate, toDate)
+                : cylinderRepo.findAllByParty(partyName));
             model.addAttribute("viewMode", "party");
         } else if (cylinderNo != null) {
-            model.addAttribute("history", cylinderRepo.findAllByCylinderNo(cylinderNo));
+            model.addAttribute("history", hasRange
+                ? cylinderRepo.findAllByCylinderNoAndDateRange(cylinderNo, fromDate, toDate)
+                : cylinderRepo.findAllByCylinderNo(cylinderNo));
             model.addAttribute("viewMode", "cylinder");
         }
         return "historyDetail";
@@ -375,6 +422,19 @@ public class MainController {
             ra.addFlashAttribute("issueReadingData", true);
         }
         return new RedirectView("/historyDetail", true);
+    }
+
+    // ── Daily Report ──────────────────────────────────────────────────────────
+
+    @GetMapping("/historyDaily")
+    public String historyDaily(
+            @RequestParam(required = false) @DateTimeFormat(pattern = "yyyy-MM-dd") Date date,
+            Model model) {
+        Date reportDate = (date != null) ? date
+            : Date.from(LocalDate.now(ZoneId.systemDefault()).atStartOfDay(ZoneId.systemDefault()).toInstant());
+        model.addAttribute("reportDate", reportDate);
+        model.addAttribute("entries",    mainEntryRepo.findEntriesByCreatedDate(reportDate));
+        return "historyDaily";
     }
 
     // ── CSV Export ────────────────────────────────────────────────────────────

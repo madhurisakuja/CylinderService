@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="en">
+<head>
+    <title>Custom Bill Template</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <style>
+        body{margin:0;font-family:Arial,Helvetica,sans-serif;background:#f4f4f4;}
+        .topnav{overflow:hidden;background:#1a1a2e;}
+        .topnav a{float:left;color:#eee;padding:14px 16px;text-decoration:none;font-size:15px;}
+        .topnav a:hover{background:#16213e;color:#04AA6D;}
+        .topnav a.active{background:#04AA6D;color:white;}
+        .content{padding:24px;max-width:640px;margin:0 auto;}
+        h2{color:#1a1a2e;}
+        .card{background:white;border-radius:8px;padding:24px;box-shadow:0 2px 8px rgba(0,0,0,.08);}
+        label{display:block;font-size:13px;font-weight:bold;color:#555;margin-bottom:5px;margin-top:16px;}
+        input,select{padding:10px 14px;border:1px solid #ccc;border-radius:4px;font-size:14px;width:100%;box-sizing:border-box;}
+        .btn{padding:12px 28px;border:none;border-radius:4px;cursor:pointer;font-size:14px;font-weight:bold;margin-top:20px;}
+        .btn-blue{background:#1a73e8;color:white;}
+        .btn-blue:hover{background:#1557b0;}
+        .info{background:#e8f0fe;border-radius:6px;padding:12px 16px;font-size:13px;color:#1a73e8;margin-bottom:16px;}
+        .info ul{margin:6px 0 0 0;padding-left:18px;}
+        .info li{margin-bottom:3px;}
+    </style>
+</head>
+<body>
+<div class="topnav">
+    <a th:href="@{/newhome}">Home</a>
+    <a th:href="@{/newEntryF}">New Entry</a>
+    <a th:href="@{/purchaseEntryF}">Purchase</a>
+    <a th:href="@{/historyHolding}">History</a>
+    <a class="active" th:href="@{/billing/generate}">Billing</a>
+    <a th:href="@{/billing/party-accounts}">Party Accounts</a>
+    <a th:href="@{/billing/prices}">Prices</a>
+    <a th:href="@{/billing/labels}">Labels</a>
+    <a th:href="@{/billing/hsn}">HSN</a>
+</div>
+<div class="content">
+    <h2>Custom Bill Template</h2>
+
+    <div class="info">
+        Downloads a blank bill pre-filled with:
+        <ul>
+            <li>Party name, address, GSTIN and state</li>
+            <li>Today's invoice date and next invoice number</li>
+            <li>All gas type rows with labels and HSN codes</li>
+            <li>Qty and Rate columns left <strong>blank</strong> for manual entry</li>
+        </ul>
+        Useful for walk-in or on-the-spot billing when no system entries exist yet.
+    </div>
+
+    <div class="card">
+        <form th:action="@{/billing/custom-template}" method="post">
+            <label>Party</label>
+            <input list="partyList" name="partyName" placeholder="Type or select party…" required autocomplete="off"/>
+            <datalist id="partyList">
+                <option th:each="p : ${partyNames}" th:value="${p}"></option>
+            </datalist>
+            <button type="submit" class="btn btn-blue">&#8659; Download Template (.xlsx)</button>
+        </form>
+    </div>
+</div>
+</body>
+</html>

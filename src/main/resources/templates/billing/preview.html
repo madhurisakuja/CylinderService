@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="en">
+<head>
+    <title>Bill Preview</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <style>
+        body{margin:0;font-family:Arial,Helvetica,sans-serif;background:#f4f4f4;}
+        .topnav{overflow:hidden;background:#1a1a2e;}
+        .topnav a{float:left;color:#eee;padding:14px 16px;text-decoration:none;font-size:15px;}
+        .topnav a:hover{background:#16213e;color:#04AA6D;}
+        .topnav a.active{background:#04AA6D;color:white;}
+        .content{padding:24px;max-width:900px;margin:0 auto;}
+        h2{color:#1a1a2e;margin-bottom:4px;}
+        .bill-card{background:white;border-radius:8px;padding:28px;box-shadow:0 2px 8px rgba(0,0,0,.08);margin-bottom:20px;}
+        .biz-header{text-align:center;margin-bottom:20px;border-bottom:2px solid #04AA6D;padding-bottom:14px;}
+        .biz-name{font-size:20px;font-weight:bold;letter-spacing:1px;}
+        .biz-sub{font-size:12px;color:#555;margin-top:4px;}
+        .bill-title{text-align:center;font-size:16px;font-weight:bold;letter-spacing:2px;margin:16px 0;}
+        .meta-grid{display:grid;grid-template-columns:1fr 1fr;gap:4px;margin-bottom:16px;font-size:13px;}
+        .meta-label{font-weight:bold;color:#333;}
+        .meta-val{color:#555;}
+        table{width:100%;border-collapse:collapse;font-size:13px;margin-bottom:16px;}
+        th{background:#04AA6D;color:white;padding:8px 10px;text-align:left;}
+        td{padding:7px 10px;border-bottom:1px solid #eee;}
+        .num{text-align:right;}
+        .totals{margin-left:auto;width:300px;font-size:13px;}
+        .totals tr td:first-child{font-weight:bold;color:#333;padding:5px 10px;}
+        .totals tr td:last-child{text-align:right;padding:5px 10px;}
+        .totals tr.grand td{font-size:15px;color:#04AA6D;font-weight:bold;border-top:2px solid #04AA6D;}
+        .words{font-size:12px;font-style:italic;color:#555;margin-bottom:16px;}
+        .action-row{display:flex;gap:12px;margin-top:20px;}
+        .btn{padding:12px 28px;border:none;border-radius:4px;cursor:pointer;font-size:14px;font-weight:bold;}
+        .btn-green{background:#04AA6D;color:white;text-decoration:none;}
+        .btn-green:hover{background:#038a57;}
+        .btn-ghost{background:white;border:1px solid #ccc;color:#555;}
+        .badge-draft{background:#fff3cd;color:#856404;padding:2px 8px;border-radius:4px;font-size:11px;margin-left:8px;}
+    </style>
+</head>
+<body>
+<div class="topnav">
+    <a th:href="@{/newhome}">Home</a>
+    <a th:href="@{/newEntryF}">New Entry</a>
+    <a th:href="@{/purchaseEntryF}">Purchase</a>
+    <a th:href="@{/historyHolding}">History</a>
+    <a class="active" th:href="@{/billing/generate}">Billing</a>
+    <a th:href="@{/billing/party-accounts}">Party Accounts</a>
+    <a th:href="@{/billing/prices}">Prices</a>
+    <a th:href="@{/billing/labels}">Labels</a>
+    <a th:href="@{/billing/hsn}">HSN</a>
+</div>
+<div class="content">
+    <h2>Bill Preview
+        <span class="badge-draft">Preview — not yet saved</span>
+    </h2>
+
+    <div class="bill-card">
+        <div class="biz-header">
+            <div class="biz-name">B.K ENTERPRISES</div>
+            <div class="biz-sub">GSTIN: 20ALFPS1571A1ZP | STATE CODE: 20 | STATE: JHARKHAND</div>
+            <div class="biz-sub">LALBABA FOUNDRY, BURMAMINES, JAMSHEDPUR 831007</div>
+            <div class="biz-sub">PH: 7209583688 | EMAIL: BKGASCRANE@GMAIL.COM</div>
+        </div>
+
+        <div class="bill-title">TAX INVOICE</div>
+
+        <div class="meta-grid">
+            <div>
+                <div class="meta-label">Buyer:</div>
+                <div th:text="${bill.partyName}" style="font-weight:bold"></div>
+                <div th:if="${bill.partyAccount != null}">
+                    <div th:text="${bill.partyAccount.address}" style="white-space:pre-line;font-size:12px;color:#555"></div>
+                    <div th:if="${bill.partyAccount.gstin != null}"
+                         th:text="'GSTIN: ' + ${bill.partyAccount.gstin}" style="font-size:12px"></div>
+                    <div th:if="${bill.partyAccount.stateCode != null}"
+                         th:text="'STATE CODE: ' + ${bill.partyAccount.stateCode} + '  STATE: ' + ${bill.partyAccount.stateName}"
+                         style="font-size:12px"></div>
+                </div>
+            </div>
+            <div>
+                <div><span class="meta-label">Invoice No: </span>
+                     <span th:text="${bill.invoiceNumber}"></span></div>
+                <div><span class="meta-label">Invoice Date: </span>
+                     <span th:text="${#dates.format(bill.invoiceDate,'dd-MM-yyyy')}"></span></div>
+                <div><span class="meta-label">Fiscal Year: </span>
+                     <span th:text="${bill.fiscalYear}"></span></div>
+            </div>
+        </div>
+
+        <!-- Line items table -->
+        <table>
+            <thead>
+                <tr>
+                    <th>SL</th>
+                    <th>Particulars</th>
+                    <th>HSN</th>
+                    <th th:if="${bill.hasUom()}">UOM</th>
+                    <th>GST%</th>
+                    <th class="num">Qty</th>
+                    <th class="num">Rate</th>
+                    <th class="num">Taxable</th>
+                    <th class="num">CGST 9%</th>
+                    <th class="num">SGST 9%</th>
+                    <th class="num">Amount</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr th:each="item : ${bill.lineItems}">
+                    <td th:text="${item.slNo}"></td>
+                    <td th:text="${item.particulars}"></td>
+                    <td th:text="${item.hsnCode}"></td>
+                    <td th:if="${bill.hasUom()}" th:text="${bill.partyUom}"></td>
+                    <td th:text="${item.gstPercent}"></td>
+                    <td class="num" th:text="${item.quantity}"></td>
+                    <td class="num" th:text="${#numbers.formatDecimal(item.rate,1,2)}"></td>
+                    <td class="num" th:text="${#numbers.formatDecimal(item.taxableAmount,1,2)}"></td>
+                    <td class="num" th:text="${#numbers.formatDecimal(item.cgstAmt,1,2)}"></td>
+                    <td class="num" th:text="${#numbers.formatDecimal(item.sgstAmt,1,2)}"></td>
+                    <td class="num" th:text="${#numbers.formatDecimal(item.amount,1,2)}"></td>
+                </tr>
+            </tbody>
+        </table>
+
+        <!-- Totals -->
+        <table class="totals">
+            <tr><td>Subtotal</td><td th:text="${#numbers.formatDecimal(bill.subtotal,1,2)}"></td></tr>
+            <tr><td>CGST 9%</td><td th:text="${#numbers.formatDecimal(bill.cgst,1,2)}"></td></tr>
+            <tr><td>SGST 9%</td><td th:text="${#numbers.formatDecimal(bill.sgst,1,2)}"></td></tr>
+            <tr th:if="${bill.hasTc()}">
+                <td>T/C</td><td th:text="${#numbers.formatDecimal(bill.tcCharge,1,2)}"></td>
+            </tr>
+            <tr th:if="${bill.hasSecurity()}">
+                <td>Security Adj.</td>
+                <td th:text="'−' + ${#numbers.formatDecimal(bill.securityDeposit,1,2)}"></td>
+            </tr>
+            <tr th:if="${bill.hasDiscount()}">
+                <td>Discount</td>
+                <td th:text="'−' + ${#numbers.formatDecimal(bill.discountAmount,1,2)}"></td>
+            </tr>
+            <tr class="grand">
+                <td>Net Total</td>
+                <td th:text="'₹ ' + ${#numbers.formatDecimal(bill.grandTotal,1,2)}"></td>
+            </tr>
+        </table>
+
+        <div class="words" th:text="'Amount in words: ' + ${bill.amountInWords}"></div>
+    </div>
+
+    <!-- Download action — posts to generate with the same params -->
+    <div class="action-row">
+        <form th:action="@{/billing/generate}" method="post">
+            <input type="hidden" name="partyName" th:value="${bill.partyName}"/>
+            <input type="hidden" name="fromDate"  th:value="${fromDate}"/>
+            <input type="hidden" name="toDate"    th:value="${toDate}"/>
+            <input type="hidden" name="discount"  th:value="${discount}"/>
+            <input type="hidden" name="security"  th:value="${security}"/>
+            <input type="hidden" name="tc"        th:value="${tc}"/>
+            <button type="submit" class="btn btn-green">&#8659; Download Bill (.xlsx)</button>
+        </form>
+        <a th:href="@{/billing/generate}" class="btn btn-ghost">← Back</a>
+    </div>
+</div>
+</body>
+</html>

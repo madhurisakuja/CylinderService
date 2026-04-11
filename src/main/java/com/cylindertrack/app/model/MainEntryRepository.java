@@ -13,56 +13,60 @@ import java.util.List;
 @Repository
 public interface MainEntryRepository extends JpaRepository<MainEntry, Long> {
 
-    // ── Holding calculations ──────────────────────────────────────────────────
-
-    /** Running holding for a sales party: sum(full) - sum(empty) */
-    @Query("select sum(e.cfull) - sum(e.cempty) " +
-           "from MainEntry e where e.partyName=?1 and e.ctype=?2 and e.isPurchase=?3")
+    @Query("select sum(e.cfull)-sum(e.cempty) from MainEntry e where e.partyName=?1 and e.ctype=?2 and e.isPurchase=?3")
     Integer getHoldingDetails(String partyName, String type, Boolean isPurchase);
 
-    /** Running holding for a purchase party: sum(empty) - sum(full) */
-    @Query("select sum(e.cempty) - sum(e.cfull) " +
-           "from MainEntry e where e.partyName=?1 and e.ctype=?2 and e.isPurchase=?3")
+    @Query("select sum(e.cempty)-sum(e.cfull) from MainEntry e where e.partyName=?1 and e.ctype=?2 and e.isPurchase=?3")
     Integer getHoldingDetailsForPurchase(String partyName, String type, Boolean isPurchase);
 
-    /** Latest entry date for a party+type (used for back-date prevention) */
     @Query("select max(e.date) from MainEntry e where e.partyName=?1 and e.ctype=?2")
     Date getLastDateEntry(String partyName, String type);
 
-    /** Latest entry date across all entries */
     @Query("select max(e.date) from MainEntry e")
     Date getLatestEntryDate();
 
-    // ── Search / history ──────────────────────────────────────────────────────
+    @Query("select e from MainEntry e where e.partyName=?1 order by e.date desc")
+    List<MainEntry> findByPartyNameOrderByDateDesc(String partyName);
 
-    @Query("select e from MainEntry e where e.partyName=?1 order by e.date asc")
-    List<MainEntry> findByPartyNameOrderByDate(String partyName);
-
-    @Query("select e from MainEntry e where e.partyName=?1 and e.ctype=?2 order by e.date asc")
+    @Query("select e from MainEntry e where e.partyName=?1 and e.ctype=?2 order by e.date desc")
     List<MainEntry> findByPartyNameAndType(String partyName, String type);
 
-    /** All entries for a party on a specific date */
-    @Query("select e from MainEntry e where e.partyName=?1 and DATE(e.date) = DATE(?2)")
+    @Query("select e from MainEntry e where e.partyName=?1 and DATE(e.date)=DATE(?2)")
     List<MainEntry> findByPartyAndDate(String partyName, Date date);
 
-    /** All entries on a specific date (for cylinder number form pre-load) */
-    @Query("select e from MainEntry e where DATE(e.date) = DATE(?1) and e.isPurchase = false order by e.partyName asc")
+    @Query("select e from MainEntry e where DATE(e.date)=DATE(?1) and e.isPurchase=false order by e.partyName asc")
     List<MainEntry> findSalesEntriesByDate(Date date);
 
-    /** Holding summary: latest cholding per party per type */
     @Query("select e from MainEntry e where e.id = " +
-           "(select max(e2.id) from MainEntry e2 where e2.partyName = e.partyName " +
-           " and e2.ctype = e.ctype and e2.isPurchase = false) " +
+           "(select max(e2.id) from MainEntry e2 where e2.partyName=e.partyName " +
+           " and e2.ctype=e.ctype and e2.isPurchase=false) " +
            "order by e.partyName asc, e.ctype asc")
     List<MainEntry> getCurrentHoldingSummary();
 
-    // ── Delete ────────────────────────────────────────────────────────────────
+    /** Holding summary filtered by date range */
+    @Query("select e from MainEntry e where e.id = " +
+           "(select max(e2.id) from MainEntry e2 where e2.partyName=e.partyName " +
+           " and e2.ctype=e.ctype and e2.isPurchase=false " +
+           " and DATE(e2.date)>=DATE(?1) and DATE(e2.date)<=DATE(?2)) " +
+           "order by e.partyName asc, e.ctype asc")
+    List<MainEntry> getCurrentHoldingSummaryForRange(Date fromDate, Date toDate);
 
-    @Modifying
-    @Transactional
-    @Query("delete from MainEntry e where e.partyName=?1 and DATE(e.date) = DATE(?2)")
+    /** Party entries with date range, date DESC */
+    @Query("select e from MainEntry e where e.partyName=?1 " +
+           "and DATE(e.date)>=DATE(?2) and DATE(e.date)<=DATE(?3) order by e.date desc")
+    List<MainEntry> findByPartyNameAndDateRange(String partyName, Date fromDate, Date toDate);
+
+    /** Party+type entries with date range, date DESC */
+    @Query("select e from MainEntry e where e.partyName=?1 and e.ctype=?2 " +
+           "and DATE(e.date)>=DATE(?3) and DATE(e.date)<=DATE(?4) order by e.date desc")
+    List<MainEntry> findByPartyTypeAndDateRange(String partyName, String ctype, Date from, Date to);
+
+    @Modifying @Transactional
+    @Query("delete from MainEntry e where e.partyName=?1 and DATE(e.date)=DATE(?2)")
     void deleteByPartyAndDate(String partyName, Date date);
 
-    // ── All entries for CSV export, sorted ────────────────────────────────────
     List<MainEntry> findByPartyName(String partyName, Sort sort);
+
+    @Query("select e from MainEntry e where DATE(e.createdAt)=DATE(?1) order by e.createdAt asc")
+    List<MainEntry> findEntriesByCreatedDate(Date date);
 }

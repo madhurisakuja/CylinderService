@@ -1,168 +1,131 @@
 <!DOCTYPE html>
 <html xmlns:th="http://www.thymeleaf.org" lang="en">
-<head>
-    <title>Generate Bill</title>
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <style>
-        body{margin:0;font-family:Arial,Helvetica,sans-serif;background:#f4f4f4;}
-        .topnav{overflow:hidden;background:#1a1a2e;}
-        .topnav a{float:left;color:#eee;padding:14px 16px;text-decoration:none;font-size:15px;}
-        .topnav a:hover{background:#16213e;color:#04AA6D;}
-        .topnav a.active{background:#04AA6D;color:white;}
-        .content{padding:24px;max-width:760px;margin:0 auto;}
-        h2{color:#1a1a2e;border-bottom:2px solid #04AA6D;padding-bottom:8px;}
-        .card{background:white;border-radius:8px;padding:24px;box-shadow:0 1px 4px rgba(0,0,0,.08);margin-bottom:16px;}
-        label{display:block;font-size:13px;font-weight:bold;color:#555;margin-bottom:5px;margin-top:14px;}
-        input,select{padding:10px 14px;border:1px solid #ccc;border-radius:4px;font-size:14px;width:100%;box-sizing:border-box;}
-        .form-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;}
-        .form-grid-3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px;}
-        .btn{padding:12px 28px;border:none;border-radius:4px;cursor:pointer;font-size:15px;font-weight:bold;margin-top:20px;}
-        .btn-green{background:#04AA6D;color:white;}
-        .btn-green:hover{background:#038a57;}
-        .btn-blue{background:#1a73e8;color:white;margin-left:12px;}
-        .btn-blue:hover{background:#1557b0;}
-        .msg-error{background:#f8d7da;color:#721c24;padding:12px;border-radius:4px;margin-bottom:16px;}
-        .hint{font-size:12px;color:#888;margin-top:3px;}
-        .section-label{font-size:12px;font-weight:bold;color:#04AA6D;text-transform:uppercase;letter-spacing:.5px;margin-top:20px;margin-bottom:4px;border-top:1px solid #eee;padding-top:16px;}
-        .months{display:grid;grid-template-columns:repeat(6,1fr);gap:8px;margin-top:6px;}
-        .month-btn{padding:8px 4px;border:1px solid #ccc;border-radius:4px;background:white;cursor:pointer;font-size:13px;text-align:center;}
-        .month-btn.selected{background:#04AA6D;color:white;border-color:#04AA6D;}
-        .btn-row{display:flex;align-items:center;flex-wrap:wrap;gap:8px;margin-top:20px;}
-    </style>
-    <script>
-    function selectMonth(btn, val) {
-        document.querySelectorAll('.month-btn').forEach(b => b.classList.remove('selected'));
-        btn.classList.add('selected');
-        document.getElementById('monthInput').value = val;
-        document.getElementById('monthInputAll').value = val;
-    }
-    </script>
+<head><title>Generate Bill</title><meta name="viewport" content="width=device-width,initial-scale=1">
+<style>
+body{margin:0;font-family:Arial,sans-serif;background:#f4f4f4;}
+.topnav{overflow:hidden;background:#1a1a2e;}.topnav a{float:left;color:#eee;padding:14px 16px;text-decoration:none;font-size:15px;}
+.topnav a:hover{background:#16213e;color:#04AA6D;}.topnav a.active{background:#04AA6D;color:white;}
+.content{padding:24px;max-width:800px;margin:0 auto;}
+h2{color:#1a1a2e;border-bottom:2px solid #04AA6D;padding-bottom:8px;}
+.card{background:white;border-radius:10px;padding:24px;box-shadow:0 2px 8px rgba(0,0,0,.07);margin-bottom:16px;}
+.card-title{font-size:15px;font-weight:bold;color:#1a1a2e;margin-bottom:16px;}
+label{display:block;font-size:13px;font-weight:bold;color:#555;margin-bottom:4px;margin-top:12px;}
+input,select{padding:10px 12px;border:1px solid #ccc;border-radius:4px;font-size:14px;width:100%;box-sizing:border-box;}
+.form-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;}
+.form-grid-3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px;}
+.btn{padding:10px 22px;border:none;border-radius:4px;cursor:pointer;font-size:14px;font-weight:bold;margin-top:12px;}
+.btn-green{background:#04AA6D;color:white;}.btn-green:hover{background:#038a57;}
+.btn-blue{background:#1a73e8;color:white;}.btn-blue:hover{background:#1557b0;}
+.btn-outline{background:white;border:1px solid #04AA6D;color:#04AA6D;margin-left:8px;}.btn-outline:hover{background:#e8f5e9;}
+.msg-error{background:#f8d7da;color:#721c24;padding:12px;border-radius:4px;margin-bottom:12px;}
+.hint{font-size:12px;color:#888;margin-top:3px;}
+.section-lbl{font-size:12px;font-weight:bold;color:#04AA6D;text-transform:uppercase;letter-spacing:.5px;margin-top:20px;padding-top:14px;border-top:1px solid #eee;}
+.btn-row{display:flex;align-items:center;flex-wrap:wrap;gap:8px;margin-top:16px;}
+</style>
 </head>
 <body>
 <div class="topnav">
-    <a th:href="@{/newhome}">Home</a>
-    <a th:href="@{/newEntryF}">New Entry</a>
-    <a th:href="@{/purchaseEntryF}">Purchase</a>
+    <a th:href="@{/newhome}">Home</a><a th:href="@{/newEntryF}">New Entry</a>
     <a th:href="@{/historyHolding}">History</a>
     <a class="active" th:href="@{/billing/generate}">Billing</a>
+    <a th:href="@{/billing/custom-template}">Custom Template</a>
     <a th:href="@{/billing/party-accounts}">Party Accounts</a>
     <a th:href="@{/billing/prices}">Prices</a>
-    <a th:href="@{/billing/hsn}">HSN Codes</a>
-    <a th:href="@{/billing/counter}">Invoice Counter</a>
+    <a th:href="@{/billing/labels}">Labels</a>
+    <a th:href="@{/billing/hsn}">HSN</a>
+    <a th:href="@{/billing/counter}">Counter</a>
 </div>
-
 <div class="content">
     <h2>Generate Bill</h2>
     <div th:if="${billError}" class="msg-error" th:text="${billError}"></div>
 
+    <!-- Shared date range (used by both single + bulk) -->
     <div class="card">
-        <!-- Shared year + month selection used by both forms -->
+        <div class="card-title">Date Range</div>
         <div class="form-grid">
             <div>
-                <label>Year</label>
-                <input type="number" id="sharedYear" th:value="${currentYear}" min="2020" max="2099"/>
-            </div>
-            <div></div>
-        </div>
-
-        <label>Month</label>
-        <input type="hidden" id="monthInput"    name="month" th:value="${currentMonth}"/>
-        <input type="hidden" id="monthInputAll" name="month" th:value="${currentMonth}"/>
-        <div class="months">
-            <button type="button" class="month-btn" th:classappend="${currentMonth==1?' selected':''}"  onclick="selectMonth(this,1)">Jan</button>
-            <button type="button" class="month-btn" th:classappend="${currentMonth==2?' selected':''}"  onclick="selectMonth(this,2)">Feb</button>
-            <button type="button" class="month-btn" th:classappend="${currentMonth==3?' selected':''}"  onclick="selectMonth(this,3)">Mar</button>
-            <button type="button" class="month-btn" th:classappend="${currentMonth==4?' selected':''}"  onclick="selectMonth(this,4)">Apr</button>
-            <button type="button" class="month-btn" th:classappend="${currentMonth==5?' selected':''}"  onclick="selectMonth(this,5)">May</button>
-            <button type="button" class="month-btn" th:classappend="${currentMonth==6?' selected':''}"  onclick="selectMonth(this,6)">Jun</button>
-            <button type="button" class="month-btn" th:classappend="${currentMonth==7?' selected':''}"  onclick="selectMonth(this,7)">Jul</button>
-            <button type="button" class="month-btn" th:classappend="${currentMonth==8?' selected':''}"  onclick="selectMonth(this,8)">Aug</button>
-            <button type="button" class="month-btn" th:classappend="${currentMonth==9?' selected':''}"  onclick="selectMonth(this,9)">Sep</button>
-            <button type="button" class="month-btn" th:classappend="${currentMonth==10?' selected':''}" onclick="selectMonth(this,10)">Oct</button>
-            <button type="button" class="month-btn" th:classappend="${currentMonth==11?' selected':''}" onclick="selectMonth(this,11)">Nov</button>
-            <button type="button" class="month-btn" th:classappend="${currentMonth==12?' selected':''}" onclick="selectMonth(this,12)">Dec</button>
-        </div>
-
-        <div class="section-label">Adjustments (optional — applied to all bills in bulk mode)</div>
-        <div class="form-grid-3">
-            <div>
-                <label>Discount ₹ <span style="color:#999;font-weight:normal">(goodwill)</span></label>
-                <input type="number" id="adj_discount" value="0" min="0" step="0.01"/>
-                <p class="hint">Shown only on the individual party's bill.</p>
+                <label>From Date</label>
+                <input type="date" id="sharedFrom"/>
             </div>
             <div>
-                <label>Security Deposit ₹ <span style="color:#999;font-weight:normal">(deduct)</span></label>
-                <input type="number" id="adj_security" value="0" min="0" step="0.01"/>
-            </div>
-            <div>
-                <label>T/C ₹ <span style="color:#999;font-weight:normal">(add)</span></label>
-                <input type="number" id="adj_tc" value="0" min="0" step="0.01"/>
-                <p class="hint">Transport / labour charges.</p>
+                <label>To Date</label>
+                <input type="date" id="sharedTo"/>
             </div>
         </div>
+        <p class="hint">Leave dates as a full month range for monthly billing, or set any custom range.</p>
     </div>
 
-    <!-- Single party form -->
+    <!-- Single party -->
     <div class="card">
-        <strong>Single Party Bill</strong>
+        <div class="card-title">Single Party Bill</div>
         <form id="singleForm" th:action="@{/billing/generate}" method="post">
-            <input type="hidden" name="year"     id="singleYear"/>
-            <input type="hidden" name="month"    id="singleMonth"/>
-            <input type="hidden" name="discount" id="singleDiscount"/>
-            <input type="hidden" name="security" id="singleSecurity"/>
-            <input type="hidden" name="tc"       id="singleTc"/>
+            <input type="hidden" name="fromDate" id="sf"/>
+            <input type="hidden" name="toDate"   id="st"/>
+            <input type="hidden" name="discount" id="sd"/>
+            <input type="hidden" name="security" id="ss"/>
+            <input type="hidden" name="tc"       id="stc"/>
             <label>Party</label>
-            <select name="partyName" required style="width:280px">
-                <option value="">-- Select Party --</option>
-                <option th:each="p : ${partyNames}" th:value="${p}" th:text="${p}"></option>
-            </select>
+            <input list="partyDatalist" name="partyName" id="singleParty" placeholder="Type or select party..." required/>
+            <datalist id="partyDatalist"><option th:each="p : ${partyNames}" th:value="${p}"></option></datalist>
+            <div class="section-lbl">Adjustments (optional)</div>
+            <div class="form-grid-3">
+                <div><label>Discount ₹ <span style="color:#999;font-weight:normal">(goodwill)</span></label>
+                    <input type="number" id="discountInput" value="0" min="0" step="0.01"/>
+                    <p class="hint">Private — shown only on this party's bill.</p></div>
+                <div><label>Security Deposit ₹ <span style="color:#999;font-weight:normal">(deduct)</span></label>
+                    <input type="number" id="securityInput" value="0" min="0" step="0.01"/></div>
+                <div><label>T/C ₹ <span style="color:#999;font-weight:normal">(add)</span></label>
+                    <input type="number" id="tcInput" value="0" min="0" step="0.01"/>
+                    <p class="hint">Transport / labour charges.</p></div>
+            </div>
             <div class="btn-row">
-                <button type="submit" class="btn btn-green"
-                        onclick="syncInputs('single')">&#8659; Download Single Bill</button>
+                <button type="button" class="btn btn-outline" onclick="previewBill()">&#128065; Preview</button>
+                <button type="submit" class="btn btn-green" onclick="syncSingle()">&#8659; Download Bill</button>
             </div>
         </form>
     </div>
 
-    <!-- All parties form -->
+    <!-- All parties -->
     <div class="card">
-        <strong>All Parties — Bulk Bill</strong>
-        <p class="hint" style="margin-top:6px">Generates one Excel file with every party that had activity in the selected month. Each party gets its own sheet.</p>
+        <div class="card-title">All Parties — Bulk Bill</div>
+        <p class="hint" style="margin-bottom:12px">Generates one Excel with every party active in the date range. Each party gets its own sheet. No per-party adjustments applied.</p>
         <form id="allForm" th:action="@{/billing/generate-all}" method="post">
-            <input type="hidden" name="year"     id="allYear"/>
-            <input type="hidden" name="month"    id="allMonth"/>
-            <input type="hidden" name="discount" id="allDiscount"/>
-            <input type="hidden" name="security" id="allSecurity"/>
-            <input type="hidden" name="tc"       id="allTc"/>
+            <input type="hidden" name="fromDate" id="af"/>
+            <input type="hidden" name="toDate"   id="at"/>
             <div class="btn-row">
-                <button type="submit" class="btn btn-blue"
-                        onclick="syncInputs('all')">&#8659; Download All Bills (.xlsx)</button>
+                <button type="submit" class="btn btn-blue" onclick="syncAll()">&#8659; Download All Bills (.xlsx)</button>
             </div>
         </form>
     </div>
 </div>
-
 <script>
-function syncInputs(mode) {
-    const year     = document.getElementById('sharedYear').value;
-    const month    = document.getElementById('monthInput').value;
-    const discount = document.getElementById('adj_discount').value;
-    const security = document.getElementById('adj_security').value;
-    const tc       = document.getElementById('adj_tc').value;
-
-    if (mode === 'single') {
-        document.getElementById('singleYear').value     = year;
-        document.getElementById('singleMonth').value    = month;
-        document.getElementById('singleDiscount').value = discount;
-        document.getElementById('singleSecurity').value = security;
-        document.getElementById('singleTc').value       = tc;
-    } else {
-        document.getElementById('allYear').value     = year;
-        document.getElementById('allMonth').value    = month;
-        document.getElementById('allDiscount').value = discount;
-        document.getElementById('allSecurity').value = security;
-        document.getElementById('allTc').value       = tc;
-    }
+function getFrom(){ return document.getElementById('sharedFrom').value; }
+function getTo()  { return document.getElementById('sharedTo').value; }
+function syncSingle(){
+    document.getElementById('sf').value  = getFrom();
+    document.getElementById('st').value  = getTo();
+    document.getElementById('sd').value  = document.getElementById('discountInput').value;
+    document.getElementById('ss').value  = document.getElementById('securityInput').value;
+    document.getElementById('stc').value = document.getElementById('tcInput').value;
 }
+function syncAll(){
+    document.getElementById('af').value = getFrom();
+    document.getElementById('at').value = getTo();
+}
+function previewBill(){
+    const party = document.getElementById('singleParty').value;
+    const from  = getFrom(); const to = getTo();
+    if (!party||!from||!to){ alert('Select party and date range first.'); return; }
+    const d = document.getElementById('discountInput').value;
+    const s = document.getElementById('securityInput').value;
+    const t = document.getElementById('tcInput').value;
+    window.open(`/billing/preview?partyName=${encodeURIComponent(party)}&fromDate=${from}&toDate=${to}&discount=${d}&security=${s}&tc=${t}`, '_blank');
+}
+// Default to current month
+const now = new Date();
+const y = now.getFullYear(), m = String(now.getMonth()+1).padStart(2,'0');
+const days = new Date(y, now.getMonth()+1, 0).getDate();
+document.getElementById('sharedFrom').value = `${y}-${m}-01`;
+document.getElementById('sharedTo').value   = `${y}-${m}-${String(days).padStart(2,'0')}`;
 </script>
-</body>
-</html>
+</body></html>

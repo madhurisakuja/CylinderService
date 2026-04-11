@@ -16,6 +16,11 @@ public interface InvoiceCounterRepository extends JpaRepository<InvoiceCounter, 
 
     @Modifying
     @Transactional
+    @Query("update InvoiceCounter c set c.currentNumber = c.currentNumber - 1 where c.id = 1 and c.currentNumber > 1")
+    void decrement();
+
+    @Modifying
+    @Transactional
     @Query("update InvoiceCounter c set c.currentNumber = 1, c.fiscalStartYear = ?1 where c.id = 1")
     void resetForNewFiscalYear(Integer fiscalStartYear);
 }

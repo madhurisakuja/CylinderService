@@ -1,12 +1,11 @@
 package com.cylindertrack.app.model;
 
 import jakarta.persistence.*;
-import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
+import org.hibernate.annotations.CreationTimestamp;
 import org.springframework.format.annotation.DateTimeFormat;
 
-import java.text.DateFormat;
 import java.text.SimpleDateFormat;
 import java.time.LocalDate;
 import java.util.ArrayList;
@@ -51,6 +50,11 @@ public class MainEntry {
     @Column(name = "remarks")
     private String remarks;
 
+    /** Set by DB on INSERT — used for daily report. Hibernate ddl-auto=update adds this column. */
+    @CreationTimestamp
+    @Column(name = "created_at", nullable = false, updatable = false)
+    private Date createdAt;
+
     public MainEntry() {}
 
     public List<String> getCylinderTypes() {
@@ -62,35 +66,33 @@ public class MainEntry {
     public Long getId() { return id; }
     public void setId(Long id) { this.id = id; }
     public String getPartyName() { return partyName; }
-    public void setPartyName(String partyName) { this.partyName = partyName; }
+    public void setPartyName(String v) { this.partyName = v; }
     public Integer getCfull() { return cfull != null ? cfull : 0; }
-    public void setCfull(Integer cfull) { this.cfull = cfull; }
+    public void setCfull(Integer v) { this.cfull = v; }
     public Integer getCempty() { return cempty != null ? cempty : 0; }
-    public void setCempty(Integer cempty) { this.cempty = cempty; }
+    public void setCempty(Integer v) { this.cempty = v; }
     public Date getDate() { return date; }
-    public void setDate(Date date) { this.date = date; }
+    public void setDate(Date v) { this.date = v; }
     public Integer getCholding() { return cholding; }
-    public void setCholding(Integer cholding) { this.cholding = cholding; }
+    public void setCholding(Integer v) { this.cholding = v; }
     public String getCtype() { return ctype; }
-    public void setCtype(String ctype) { this.ctype = ctype; }
+    public void setCtype(String v) { this.ctype = v; }
     public Boolean getIsPurchase() { return isPurchase; }
-    public void setIsPurchase(Boolean isPurchase) { this.isPurchase = isPurchase; }
+    public void setIsPurchase(Boolean v) { this.isPurchase = v; }
     public String getRemarks() { return remarks; }
-    public void setRemarks(String remarks) { this.remarks = remarks; }
+    public void setRemarks(String v) { this.remarks = v; }
+    public Date getCreatedAt() { return createdAt; }
 
     public Integer getMonthValue() {
-        DateFormat df = new SimpleDateFormat("yyyy-MM-dd");
-        return LocalDate.parse(df.format(date)).getMonthValue();
+        return LocalDate.parse(new SimpleDateFormat("yyyy-MM-dd").format(date)).getMonthValue();
     }
-
     public String getStringDate() {
         return new SimpleDateFormat("yyyy-MM-dd").format(date);
     }
 
     @Override
     public String toString() {
-        return "MainEntry{party=" + partyName + ", type=" + ctype +
-               ", full=" + cfull + ", empty=" + cempty +
-               ", holding=" + cholding + ", date=" + date + "}";
+        return "MainEntry{party=" + partyName + ",type=" + ctype +
+               ",full=" + cfull + ",empty=" + cempty + ",date=" + date + "}";
     }
 }

@@ -9,13 +9,18 @@ import jakarta.validation.constraints.Size;
 public class PartyNames {
 
     @Id
-    @NotBlank(message = "Party name must not be blank")
-    @Size(max = 100, message = "Party name must be 100 characters or fewer")
+    @NotBlank
+    @Size(max = 100)
     @Column(name = "party_name", nullable = false, length = 100)
     private String partyName;
 
+    /** Optional UOM for billing: NOS, M3, or null/blank = no UOM column on bill */
+    @Column(name = "uom_type", length = 10)
+    private String uomType;
+
     public String getPartyName() { return partyName; }
-    public void setPartyName(String partyName) {
-        this.partyName = partyName != null ? partyName.trim() : null;
-    }
+    public void setPartyName(String v) { this.partyName = v != null ? v.trim() : null; }
+    public String getUomType() { return uomType; }
+    public void setUomType(String v) { this.uomType = (v != null && !v.isBlank()) ? v.trim() : null; }
+    public boolean hasUom() { return uomType != null && !uomType.isBlank(); }
 }

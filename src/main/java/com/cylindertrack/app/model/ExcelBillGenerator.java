@@ -22,270 +22,218 @@ public class ExcelBillGenerator {
     public byte[] generate(List<BillSummary> bills) throws IOException {
         XSSFWorkbook wb = new XSSFWorkbook();
 
-        XSSFFont boldFont = wb.createFont();
-        boldFont.setBold(true); boldFont.setFontHeightInPoints((short)11); boldFont.setFontName("Arial");
-        XSSFFont normalFont = wb.createFont();
-        normalFont.setFontHeightInPoints((short)10); normalFont.setFontName("Arial");
-        XSSFFont bigBoldFont = wb.createFont();
-        bigBoldFont.setBold(true); bigBoldFont.setFontHeightInPoints((short)14); bigBoldFont.setFontName("Arial");
-
-        // Pre-build shared styles once for the workbook
-        XSSFCellStyle numStyle  = numericStyle(wb, normalFont, "#,##0.00");
-        XSSFCellStyle pctStyle  = wb.createCellStyle();
-        pctStyle.setFont(normalFont);
-        pctStyle.setAlignment(HorizontalAlignment.CENTER);
-        // Store "18%" as a plain string — avoids the 0.18 rendering issue
-        XSSFCellStyle borderStyle = bordered(wb, normalFont);
-        XSSFCellStyle hdrStyle    = headerStyle(wb, boldFont);
+        XSSFFont bold   = font(wb, true, 11);
+        XSSFFont normal = font(wb, false, 10);
+        XSSFFont bigBold= font(wb, true, 14);
 
         for (BillSummary bill : bills) {
-            String raw = sanitize(bill.getPartyName()) + " " +
-                         bill.getInvoiceNumber().replace("/", "-");
-            String sheetName = raw.length() > 31 ? raw.substring(0, 31) : raw;
-            XSSFSheet ws = wb.createSheet(sheetName);
+            boolean hasUom = bill.getPartyUom() != null && !bill.getPartyUom().isBlank();
 
-            ws.setColumnWidth(0, 6  * 256);
-            ws.setColumnWidth(1, 30 * 256);  // wider for cylinder numbers
-            ws.setColumnWidth(2, 14 * 256);
-            ws.setColumnWidth(3, 8  * 256);
-            ws.setColumnWidth(4, 10 * 256);
-            ws.setColumnWidth(5, 12 * 256);
-            ws.setColumnWidth(6, 14 * 256);
-            ws.setColumnWidth(7, 14 * 256);
-            ws.setColumnWidth(8, 14 * 256);
-            ws.setColumnWidth(9, 14 * 256);
+            String raw = sanitize(bill.getPartyName()) + " " + bill.getInvoiceNumber().replace("/","-");
+            XSSFSheet ws = wb.createSheet(raw.length()>31 ? raw.substring(0,31) : raw);
+
+            // Column widths — shift right if UOM column present
+            ws.setColumnWidth(0, 6*256);   // A SL NO
+            ws.setColumnWidth(1, 28*256);  // B Particulars
+            ws.setColumnWidth(2, 14*256);  // C HSN
+            if (hasUom) {
+                ws.setColumnWidth(3, 8*256);  // D UOM
+                ws.setColumnWidth(4, 8*256);  // E GST%
+                ws.setColumnWidth(5, 10*256); // F Qty
+                ws.setColumnWidth(6, 12*256); // G Rate
+                ws.setColumnWidth(7, 14*256); // H Taxable
+                ws.setColumnWidth(8, 14*256); // I CGST
+                ws.setColumnWidth(9, 14*256); // J SGST
+                ws.setColumnWidth(10,14*256); // K Amount
+            } else {
+                ws.setColumnWidth(3, 8*256);  // D GST%
+                ws.setColumnWidth(4, 10*256); // E Qty
+                ws.setColumnWidth(5, 12*256); // F Rate
+                ws.setColumnWidth(6, 14*256); // G Taxable
+                ws.setColumnWidth(7, 14*256); // H CGST
+                ws.setColumnWidth(8, 14*256); // I SGST
+                ws.setColumnWidth(9, 14*256); // J Amount
+            }
 
             int r = 0;
+            cell(ws.createRow(r++), hasUom?9:8, "ORIGINAL COPY", normal, HorizontalAlignment.RIGHT);
+            cell(ws.createRow(r++), 0, BIZ_NAME, bigBold, HorizontalAlignment.LEFT);
+            r++; r++;
+            cell(ws.createRow(r++), 0, BIZ_GSTIN,   normal, HorizontalAlignment.LEFT);
+            cell(ws.createRow(r++), 1, BIZ_ADDR,    normal, HorizontalAlignment.LEFT);
+            cell(ws.createRow(r++), 0, BIZ_CONTACT, normal, HorizontalAlignment.LEFT);
+            cell(ws.createRow(r++), 3, "TAX INVOICE", bigBold, HorizontalAlignment.CENTER);
+            r++;
 
-            // Row 1 — ORIGINAL COPY
-            cell(ws.createRow(r++), 8, "ORIGINAL COPY", normalFont, HorizontalAlignment.RIGHT);
-
-            // Row 2 — Business name
-            cell(ws.createRow(r++), 0, BIZ_NAME, bigBoldFont, HorizontalAlignment.LEFT);
-            r++; r++; // blank 3,4
-
-            // Row 5 — GSTIN
-            cell(ws.createRow(r++), 0, BIZ_GSTIN, normalFont, HorizontalAlignment.LEFT);
-            // Row 6 — Address
-            cell(ws.createRow(r++), 1, BIZ_ADDR, normalFont, HorizontalAlignment.LEFT);
-            // Row 7 — Contact
-            cell(ws.createRow(r++), 0, BIZ_CONTACT, normalFont, HorizontalAlignment.LEFT);
-            // Row 8 — TAX INVOICE
-            cell(ws.createRow(r++), 3, "TAX INVOICE", bigBoldFont, HorizontalAlignment.CENTER);
-            r++; // blank
-
-            // Row 10 — Buyer + Invoice No
             Row row10 = ws.createRow(r++);
-            cell(row10, 0, "Buyer:", boldFont, HorizontalAlignment.LEFT);
-            cell(row10, 5, "INVOICE NO: " + bill.getInvoiceNumber(), boldFont, HorizontalAlignment.LEFT);
+            cell(row10, 0, "Buyer:", bold, HorizontalAlignment.LEFT);
+            cell(row10, hasUom?6:5, "INVOICE NO: "+bill.getInvoiceNumber(), bold, HorizontalAlignment.LEFT);
 
-            // Row 11 — Party name + Invoice Date (today)
             Row row11 = ws.createRow(r++);
-            cell(row11, 0, bill.getPartyName(), boldFont, HorizontalAlignment.LEFT);
-            cell(row11, 5, "INVOICE DATE: " + DATE_FMT.format(bill.getInvoiceDate()),
-                 normalFont, HorizontalAlignment.LEFT);
+            cell(row11, 0, bill.getPartyName(), bold, HorizontalAlignment.LEFT);
+            cell(row11, hasUom?6:5, "INVOICE DATE: "+DATE_FMT.format(bill.getInvoiceDate()), normal, HorizontalAlignment.LEFT);
 
-            // Party address block
             PartyAccount pa = bill.getPartyAccount();
             if (pa != null) {
-                if (notBlank(pa.getAddress())) {
-                    for (String line : splitAddress(pa.getAddress()))
-                        cell(ws.createRow(r++), 0, line, normalFont, HorizontalAlignment.LEFT);
-                }
-                if (notBlank(pa.getGstin()))
-                    cell(ws.createRow(r++), 0, "GSTIN: " + pa.getGstin(), normalFont, HorizontalAlignment.LEFT);
-                if (notBlank(pa.getStateCode())) {
-                    String sc = "STATE CODE: " + pa.getStateCode();
-                    if (notBlank(pa.getStateName())) sc += "   STATE: " + pa.getStateName();
-                    cell(ws.createRow(r++), 0, sc, normalFont, HorizontalAlignment.LEFT);
+                if (nb(pa.getAddress()))
+                    for (String line : splitAddr(pa.getAddress()))
+                        cell(ws.createRow(r++), 0, line, normal, HorizontalAlignment.LEFT);
+                if (nb(pa.getGstin()))
+                    cell(ws.createRow(r++), 0, "GSTIN: "+pa.getGstin(), normal, HorizontalAlignment.LEFT);
+                if (nb(pa.getStateCode())) {
+                    String sc = "STATE CODE: "+pa.getStateCode();
+                    if (nb(pa.getStateName())) sc += "   STATE: "+pa.getStateName();
+                    cell(ws.createRow(r++), 0, sc, normal, HorizontalAlignment.LEFT);
                 }
             }
-            r++; // blank before header
+            r++;
 
-            // Table header
+            // Header row
+            XSSFCellStyle hdrStyle = hdrStyle(wb, bold);
             Row hdr = ws.createRow(r++);
-            String[] headers = {"SL NO","Particulars","HSN code","GST %","Quantity","Rate",
-                                 "Taxable","CGST Amt","SGST Amt","AMOUNT"};
-            for (int i = 0; i < headers.length; i++) {
-                XSSFCell c = (XSSFCell) hdr.createCell(i);
-                c.setCellValue(headers[i]);
-                c.setCellStyle(hdrStyle);
+            if (hasUom) {
+                String[] hdrs = {"SL NO","Particulars","HSN code","UOM","GST %","Quantity","Rate","Taxable","CGST Amt","SGST Amt","AMOUNT"};
+                for (int i=0; i<hdrs.length; i++) { XSSFCell c=(XSSFCell)hdr.createCell(i); c.setCellValue(hdrs[i]); c.setCellStyle(hdrStyle); }
+            } else {
+                String[] hdrs = {"SL NO","Particulars","HSN code","GST %","Quantity","Rate","Taxable","CGST Amt","SGST Amt","AMOUNT"};
+                for (int i=0; i<hdrs.length; i++) { XSSFCell c=(XSSFCell)hdr.createCell(i); c.setCellValue(hdrs[i]); c.setCellStyle(hdrStyle); }
             }
 
-            // Sub-header: Amount / 9% / 9%  (string, not numeric)
+            // Sub-header
             Row subHdr = ws.createRow(r++);
-            cell(subHdr, 6, "Amount", normalFont, HorizontalAlignment.CENTER);
-            cell(subHdr, 7, "9%",     normalFont, HorizontalAlignment.CENTER);
-            cell(subHdr, 8, "9%",     normalFont, HorizontalAlignment.CENTER);
+            int amtCol = hasUom ? 7 : 6;
+            cell(subHdr, amtCol,   "Amount", normal, HorizontalAlignment.CENTER);
+            cell(subHdr, amtCol+1, "9%",     normal, HorizontalAlignment.CENTER);
+            cell(subHdr, amtCol+2, "9%",     normal, HorizontalAlignment.CENTER);
 
-            // Data rows
+            XSSFCellStyle numStyle  = numStyle(wb, normal);
+            XSSFCellStyle bdrStyle  = bdrStyle(wb, normal);
+
             List<BillLineItem> items = bill.getLineItems();
             int[] dataRows = new int[items.size()];
 
-            for (int i = 0; i < items.size(); i++) {
+            for (int i=0; i<items.size(); i++) {
                 BillLineItem item = items.get(i);
                 Row dr = ws.createRow(r);
-                dataRows[i] = r + 1;
+                dataRows[i] = r+1;
                 r++;
 
-                setCellInt(dr, 0, item.getSlNo(), borderStyle);
+                cellInt(dr, 0, item.getSlNo(), bdrStyle);
+                cellStr(dr, 1, item.getParticulars(), bdrStyle);
+                cellStr(dr, 2, ns(item.getHsnCode()), bdrStyle);
 
-                // Particulars + cylinder numbers on next line if available
-                String particulars = item.getParticulars();
-                if (!item.getCylinderNumbers().isBlank())
-                    particulars += "\n" + item.getCylinderNumbers();
-                XSSFCell partCell = (XSSFCell) dr.createCell(1);
-                partCell.setCellValue(particulars);
-                partCell.setCellStyle(borderStyle);
-                if (!item.getCylinderNumbers().isBlank()) {
-                    dr.setHeight((short)(dr.getHeight() * 2));
+                if (hasUom) {
+                    cellStr(dr, 3, bill.getPartyUom(), bdrStyle);
+                    cellStr(dr, 4, "18%",  bdrStyle);
+                    cellInt(dr, 5, item.getQuantity(), bdrStyle);
+                    cellNum(dr, 6, item.getRate(), numStyle);
+                    int eRow = r;
+                    formula(dr, 7, "G"+eRow+"*F"+eRow, numStyle);
+                    formula(dr, 8, "H"+eRow+"*0.09",   numStyle);
+                    formula(dr, 9, "H"+eRow+"*0.09",   numStyle);
+                    formula(dr,10, "J"+eRow+"+I"+eRow+"+H"+eRow, numStyle);
+                } else {
+                    cellStr(dr, 3, "18%",  bdrStyle);
+                    cellInt(dr, 4, item.getQuantity(), bdrStyle);
+                    cellNum(dr, 5, item.getRate(), numStyle);
+                    int eRow = r;
+                    formula(dr, 6, "F"+eRow+"*E"+eRow, numStyle);
+                    formula(dr, 7, "G"+eRow+"*0.09",   numStyle);
+                    formula(dr, 8, "G"+eRow+"*0.09",   numStyle);
+                    formula(dr, 9, "I"+eRow+"+H"+eRow+"+G"+eRow, numStyle);
                 }
-
-                setCell(dr, 2, notBlankStr(item.getHsnCode()), borderStyle);
-
-                // GST % as string "18%"
-                XSSFCell gstCell = (XSSFCell) dr.createCell(3);
-                gstCell.setCellValue("18%");
-                gstCell.setCellStyle(borderStyle);
-
-                setCellInt(dr, 4, item.getQuantity(), borderStyle);
-                setCellNum(dr, 5, item.getRate(), numStyle);
-
-                int eRow = r;
-                dr.createCell(6).setCellFormula("F" + eRow + "*E" + eRow);
-                dr.getCell(6).setCellStyle(numStyle);
-                dr.createCell(7).setCellFormula("G" + eRow + "*0.09");
-                dr.getCell(7).setCellStyle(numStyle);
-                dr.createCell(8).setCellFormula("G" + eRow + "*0.09");
-                dr.getCell(8).setCellStyle(numStyle);
-                dr.createCell(9).setCellFormula("I" + eRow + "+H" + eRow + "+G" + eRow);
-                dr.getCell(9).setCellStyle(numStyle);
             }
 
-            r += 3; // spacing before totals
+            r += 3;
+            int amountCol = hasUom ? 10 : 9;
+            String amtLetter = hasUom ? "K" : "J";
 
-            // Total
             Row totRow = ws.createRow(r++);
-            cell(totRow, 8, "Total", boldFont, HorizontalAlignment.RIGHT);
+            cell(totRow, amountCol-1, "Total", bold, HorizontalAlignment.RIGHT);
             StringBuilder jSum = new StringBuilder();
-            for (int i = 0; i < dataRows.length; i++) {
-                if (i > 0) jSum.append("+");
-                jSum.append("J").append(dataRows[i]);
-            }
-            totRow.createCell(9).setCellFormula(jSum.toString());
-            totRow.getCell(9).setCellStyle(numStyle);
+            for (int i=0; i<dataRows.length; i++) { if(i>0) jSum.append("+"); jSum.append(amtLetter).append(dataRows[i]); }
+            if (jSum.length() > 0) formula(totRow, amountCol, jSum.toString(), numStyle);
 
-            // T/C (optional)
             if (bill.hasTc()) {
-                Row tcRow = ws.createRow(r++);
-                cell(tcRow, 8, "T/C", normalFont, HorizontalAlignment.RIGHT);
-                setCellNum(tcRow, 9, bill.getTcCharge(), numStyle);
+                Row tc = ws.createRow(r++);
+                cell(tc, amountCol-1, "T/C", normal, HorizontalAlignment.RIGHT);
+                cellNum(tc, amountCol, bill.getTcCharge(), numStyle);
             }
-
-            // Security (optional)
             if (bill.hasSecurity()) {
-                Row secRow = ws.createRow(r++);
-                cell(secRow, 8, "Security Adj.", normalFont, HorizontalAlignment.RIGHT);
-                setCellNum(secRow, 9, bill.getSecurityDeposit().negate(), numStyle);
+                Row sec = ws.createRow(r++);
+                cell(sec, amountCol-1, "Security Adj.", normal, HorizontalAlignment.RIGHT);
+                cellNum(sec, amountCol, bill.getSecurityDeposit().negate(), numStyle);
             }
-
-            // Discount (optional, private)
             if (bill.hasDiscount()) {
-                Row discRow = ws.createRow(r++);
-                cell(discRow, 8, "Discount", normalFont, HorizontalAlignment.RIGHT);
-                setCellNum(discRow, 9, bill.getDiscountAmount().negate(), numStyle);
+                Row disc = ws.createRow(r++);
+                cell(disc, amountCol-1, "Discount", normal, HorizontalAlignment.RIGHT);
+                cellNum(disc, amountCol, bill.getDiscountAmount().negate(), numStyle);
             }
 
-            // Net Total
-            Row netRow = ws.createRow(r++);
-            cell(netRow, 8, "Net Total", boldFont, HorizontalAlignment.RIGHT);
-            setCellNum(netRow, 9, bill.getGrandTotal(), numStyle);
-
-            r++; // blank
-
-            // Amount in words
-            cell(ws.createRow(r++), 0,
-                 "AMOUNT IN WORDS: " + bill.getAmountInWords() + ".",
-                 boldFont, HorizontalAlignment.LEFT);
+            Row net = ws.createRow(r++);
+            cell(net, amountCol-1, "Net Total", bold, HorizontalAlignment.RIGHT);
+            cellNum(net, amountCol, bill.getGrandTotal(), numStyle);
 
             r++;
-            cell(ws.createRow(r++), 0, BIZ_NAME, boldFont, HorizontalAlignment.LEFT);
+            cell(ws.createRow(r++), 0, "AMOUNT IN WORDS: "+bill.getAmountInWords()+".", bold, HorizontalAlignment.LEFT);
+            r++;
+            cell(ws.createRow(r++), 0, BIZ_NAME, bold, HorizontalAlignment.LEFT);
             r += 2;
-            cell(ws.createRow(r), 0, "AUTHORISED SIGNATORY", normalFont, HorizontalAlignment.LEFT);
+            cell(ws.createRow(r),   0, "AUTHORISED SIGNATORY", normal, HorizontalAlignment.LEFT);
         }
 
         ByteArrayOutputStream out = new ByteArrayOutputStream();
-        wb.write(out);
-        wb.close();
+        wb.write(out); wb.close();
         return out.toByteArray();
     }
 
-    // ── helpers ───────────────────────────────────────────────────────────────
+    // ── style/cell helpers ────────────────────────────────────────────────────
 
+    private XSSFFont font(XSSFWorkbook wb, boolean bold, int size) {
+        XSSFFont f = wb.createFont(); f.setBold(bold); f.setFontHeightInPoints((short)size); f.setFontName("Arial"); return f;
+    }
     private void cell(Row row, int col, String val, XSSFFont font, HorizontalAlignment align) {
-        XSSFWorkbook wb = (XSSFWorkbook) row.getSheet().getWorkbook();
-        XSSFCellStyle s = wb.createCellStyle();
-        s.setFont(font);
-        s.setAlignment(align);
-        XSSFCell c = (XSSFCell) row.createCell(col);
-        c.setCellValue(val);
-        c.setCellStyle(s);
+        XSSFWorkbook wb = (XSSFWorkbook)row.getSheet().getWorkbook();
+        XSSFCellStyle s = wb.createCellStyle(); s.setFont(font); s.setAlignment(align);
+        XSSFCell c = (XSSFCell)row.createCell(col); c.setCellValue(val); c.setCellStyle(s);
     }
-
-    private void setCell(Row row, int col, String val, XSSFCellStyle style) {
-        XSSFCell c = (XSSFCell) row.createCell(col); c.setCellValue(val); c.setCellStyle(style);
+    private void cellStr(Row row, int col, String val, XSSFCellStyle s) {
+        XSSFCell c = (XSSFCell)row.createCell(col); c.setCellValue(ns(val)); c.setCellStyle(s);
     }
-
-    private void setCellInt(Row row, int col, int val, XSSFCellStyle style) {
-        XSSFCell c = (XSSFCell) row.createCell(col); c.setCellValue(val); c.setCellStyle(style);
+    private void cellInt(Row row, int col, int val, XSSFCellStyle s) {
+        XSSFCell c = (XSSFCell)row.createCell(col); c.setCellValue(val); c.setCellStyle(s);
     }
-
-    private void setCellNum(Row row, int col, BigDecimal val, XSSFCellStyle style) {
-        XSSFCell c = (XSSFCell) row.createCell(col);
-        c.setCellValue(val.doubleValue()); c.setCellStyle(style);
+    private void cellNum(Row row, int col, BigDecimal val, XSSFCellStyle s) {
+        XSSFCell c = (XSSFCell)row.createCell(col); c.setCellValue(val.doubleValue()); c.setCellStyle(s);
     }
-
-    private XSSFCellStyle headerStyle(XSSFWorkbook wb, XSSFFont font) {
-        XSSFCellStyle s = wb.createCellStyle();
-        s.setFont(font); s.setAlignment(HorizontalAlignment.CENTER);
-        s.setFillForegroundColor(IndexedColors.LIGHT_GREEN.getIndex());
-        s.setFillPattern(FillPatternType.SOLID_FOREGROUND);
+    private void formula(Row row, int col, String f, XSSFCellStyle s) {
+        XSSFCell c = (XSSFCell)row.createCell(col); c.setCellFormula(f); c.setCellStyle(s);
+    }
+    private XSSFCellStyle hdrStyle(XSSFWorkbook wb, XSSFFont font) {
+        XSSFCellStyle s = wb.createCellStyle(); s.setFont(font); s.setAlignment(HorizontalAlignment.CENTER);
+        s.setFillForegroundColor(IndexedColors.LIGHT_GREEN.getIndex()); s.setFillPattern(FillPatternType.SOLID_FOREGROUND);
         s.setBorderBottom(BorderStyle.THIN); s.setBorderTop(BorderStyle.THIN);
         s.setBorderLeft(BorderStyle.THIN);   s.setBorderRight(BorderStyle.THIN);
         return s;
     }
-
-    private XSSFCellStyle numericStyle(XSSFWorkbook wb, XSSFFont font, String fmt) {
-        XSSFCellStyle s = wb.createCellStyle();
-        s.setFont(font); s.setAlignment(HorizontalAlignment.RIGHT);
-        s.setDataFormat(wb.createDataFormat().getFormat(fmt));
-        return s;
+    private XSSFCellStyle numStyle(XSSFWorkbook wb, XSSFFont font) {
+        XSSFCellStyle s = wb.createCellStyle(); s.setFont(font); s.setAlignment(HorizontalAlignment.RIGHT);
+        s.setDataFormat(wb.createDataFormat().getFormat("#,##0.00")); return s;
     }
-
-    private XSSFCellStyle bordered(XSSFWorkbook wb, XSSFFont font) {
-        XSSFCellStyle s = wb.createCellStyle();
-        s.setFont(font);
+    private XSSFCellStyle bdrStyle(XSSFWorkbook wb, XSSFFont font) {
+        XSSFCellStyle s = wb.createCellStyle(); s.setFont(font);
         s.setBorderBottom(BorderStyle.THIN); s.setBorderTop(BorderStyle.THIN);
-        s.setBorderLeft(BorderStyle.THIN);   s.setBorderRight(BorderStyle.THIN);
-        return s;
+        s.setBorderLeft(BorderStyle.THIN);   s.setBorderRight(BorderStyle.THIN); return s;
     }
-
-    private boolean notBlank(String s) { return s != null && !s.isBlank(); }
-    private String notBlankStr(String s) { return s != null ? s : ""; }
-
-    private String sanitize(String name) {
-        return name.replaceAll("[\\\\/:*?\"<>|\\[\\]]", "").trim();
-    }
-
-    private String[] splitAddress(String addr) {
-        if (addr.length() <= 40) return new String[]{addr};
-        int mid = addr.lastIndexOf(',', 40);
-        if (mid < 0) mid = 40;
-        String first = addr.substring(0, mid + 1).trim();
-        String rest  = addr.substring(mid + 1).trim();
-        if (rest.length() <= 40) return new String[]{first, rest};
-        int mid2 = rest.lastIndexOf(',', 40);
-        if (mid2 < 0) mid2 = 40;
-        return new String[]{first, rest.substring(0, mid2+1).trim(), rest.substring(mid2+1).trim()};
+    private boolean nb(String s) { return s!=null && !s.isBlank(); }
+    private String  ns(String s) { return s!=null ? s : ""; }
+    private String sanitize(String n) { return n.replaceAll("[\\\\/:*?\"<>|\\[\\]]","").trim(); }
+    private String[] splitAddr(String a) {
+        if (a.length()<=40) return new String[]{a};
+        int m = a.lastIndexOf(',',40); if(m<0) m=40;
+        String f=a.substring(0,m+1).trim(), rest=a.substring(m+1).trim();
+        if (rest.length()<=40) return new String[]{f,rest};
+        int m2=rest.lastIndexOf(',',40); if(m2<0) m2=40;
+        return new String[]{f,rest.substring(0,m2+1).trim(),rest.substring(m2+1).trim()};
     }
 }

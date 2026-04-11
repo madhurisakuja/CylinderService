@@ -1,54 +1,74 @@
 <!DOCTYPE html>
 <html xmlns:th="http://www.thymeleaf.org" lang="en">
-<head>
-    <title>Delete Entry</title>
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <style>
-        body{margin:0;font-family:Arial,Helvetica,sans-serif;background:#f4f4f4;}
-        .topnav{overflow:hidden;background:#1a1a2e;}
-        .topnav a{float:left;color:#eee;padding:14px 16px;text-decoration:none;font-size:15px;}
-        .topnav a:hover{background:#16213e;color:#04AA6D;}
-        .topnav a.active{background:#04AA6D;color:white;}
-        .content{padding:24px;max-width:600px;margin:0 auto;}
-        h2{color:#1a1a2e;}
-        .card{background:white;border-radius:10px;padding:24px;box-shadow:0 2px 8px rgba(0,0,0,.07);}
-        label{display:block;font-size:13px;font-weight:bold;color:#555;margin-bottom:4px;margin-top:14px;}
-        select,input[type=date]{padding:10px 12px;border:1px solid #ccc;border-radius:4px;font-size:14px;width:100%;box-sizing:border-box;}
-        .btn{padding:12px 28px;border:none;border-radius:4px;cursor:pointer;font-size:15px;font-weight:bold;margin-top:20px;}
-        .btn-red{background:#cc0000;color:white;}
-        .btn-red:hover{background:#990000;}
-        .msg-success{background:#d4edda;color:#155724;padding:12px;border-radius:4px;margin-bottom:16px;}
-        .warning{background:#fff3cd;color:#856404;padding:10px;border-radius:4px;font-size:13px;margin-top:12px;}
-    </style>
+<head><title>Delete Entry</title><meta name="viewport" content="width=device-width,initial-scale=1">
+<style>
+body{margin:0;font-family:Arial,sans-serif;background:#f4f4f4;}
+.topnav{overflow:hidden;background:#1a1a2e;}.topnav a{float:left;color:#eee;padding:14px 16px;text-decoration:none;font-size:15px;}
+.topnav a:hover{background:#16213e;color:#04AA6D;}.topnav a.active{background:#04AA6D;color:white;}
+.content{padding:24px;max-width:660px;margin:0 auto;}h2{color:#1a1a2e;}
+.card{background:white;border-radius:10px;padding:24px;box-shadow:0 2px 8px rgba(0,0,0,.07);margin-bottom:16px;}
+label{display:block;font-size:13px;font-weight:bold;color:#555;margin-bottom:4px;margin-top:14px;}
+select,input[type=date],input[type=number]{padding:10px 12px;border:1px solid #ccc;border-radius:4px;font-size:14px;width:100%;box-sizing:border-box;}
+.btn{padding:10px 24px;border:none;border-radius:4px;cursor:pointer;font-size:14px;font-weight:bold;margin-top:16px;}
+.btn-red{background:#cc0000;color:white;}.btn-red:hover{background:#990000;}
+.btn-outline{background:white;border:1px solid #ccc;color:#555;margin-left:8px;}
+.msg-success{background:#d4edda;color:#155724;padding:12px;border-radius:4px;margin-bottom:12px;}
+.warn{background:#fff3cd;color:#856404;padding:10px;border-radius:4px;font-size:13px;margin-top:10px;}
+.cyl-section{margin-top:16px;padding-top:16px;border-top:1px solid #eee;}
+#cylOptions{display:none;}
+</style>
 </head>
 <body>
 <div class="topnav">
-    <a th:href="@{/newhome}">Home</a>
-    <a th:href="@{/newEntryF}">New Entry</a>
-    <a th:href="@{/purchaseEntryF}">Purchase</a>
-    <a th:href="@{/cylinderNumbers}">Cylinder Numbers</a>
-    <a th:href="@{/historyHolding}">History</a>
+    <a th:href="@{/newhome}">Home</a><a th:href="@{/newEntryF}">New Entry</a>
+    <a th:href="@{/purchaseEntryF}">Purchase</a><a th:href="@{/historyHolding}">History</a>
     <a class="active" th:href="@{/deleteEntryF}">Delete</a>
-    <a th:href="@{/newPartyEntryF}">Parties</a>
-    <a th:href="@{/billing/generate}">Billing</a>
+    <a th:href="@{/newPartyEntryF}">Parties</a><a th:href="@{/billing/generate}">Billing</a>
 </div>
 <div class="content">
     <h2>Delete Entry</h2>
     <div th:if="${deleteSuccess}" class="msg-success">Entry deleted successfully.</div>
     <div class="card">
-        <form th:action="@{/deleteEntryF}" th:object="${entry}" method="post"
-              onsubmit="return confirm('Delete ALL entries for this party on this date?')">
+        <form id="delForm" th:action="@{/deleteEntryF}" method="post">
             <label>Party Name</label>
-            <select th:field="*{partyName}" required>
-                <option value="">-- Select Party --</option>
-                <option th:each="p : ${partyNames}" th:value="${p}" th:text="${p}"></option>
-            </select>
+            <input list="partyList" name="partyName" id="partyInput" placeholder="Type or select party..." required
+                   onchange="loadCylinders()" oninput="loadCylinders()"/>
+            <datalist id="partyList">
+                <option th:each="p : ${partyNames}" th:value="${p}"></option>
+            </datalist>
             <label>Date</label>
-            <input type="date" th:field="*{date}" required/>
-            <div class="warning">This deletes ALL gas type entries for the selected party on this date.</div>
-            <button type="submit" class="btn btn-red">Delete Entries</button>
+            <input type="date" name="date" id="dateInput" required onchange="loadCylinders()"/>
+            <div class="cyl-section">
+                <label>Delete Scope</label>
+                <select id="scopeSelect" name="_scope" onchange="toggleCylinder(this.value)">
+                    <option value="all">Delete ALL entries for this party + date</option>
+                    <option value="cylinder">Delete a specific cylinder entry only</option>
+                </select>
+                <div id="cylOptions" style="margin-top:10px">
+                    <label>Cylinder Number</label>
+                    <select name="cylinderNo" id="cylSelect">
+                        <option value="">-- Load party + date first --</option>
+                    </select>
+                </div>
+            </div>
+            <div class="warn">This action cannot be undone. Deleting all scope removes both main entries and cylinder entries.</div>
+            <button type="submit" class="btn btn-red" onclick="return confirm('Confirm delete?')">Delete</button>
         </form>
     </div>
 </div>
-</body>
-</html>
+<script>
+function toggleCylinder(val) {
+    document.getElementById('cylOptions').style.display = val==='cylinder' ? 'block' : 'none';
+}
+async function loadCylinders() {
+    const party = document.getElementById('partyInput').value.trim();
+    const date  = document.getElementById('dateInput').value;
+    if (!party || !date) return;
+    const resp = await fetch(`/deleteEntryF/cylinders?partyName=${encodeURIComponent(party)}&date=${date}`);
+    const cyls = await resp.json();
+    const sel = document.getElementById('cylSelect');
+    sel.innerHTML = '<option value="">-- Select cylinder --</option>' +
+        cyls.map(c => `<option value="${c}">${c}</option>`).join('');
+}
+</script>
+</body></html>
