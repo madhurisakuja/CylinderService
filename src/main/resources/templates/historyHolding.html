@@ -57,11 +57,16 @@
             <div class="filter-grid">
                 <div>
                     <label>Party (blank = all parties)</label>
-                    <input list="partyList" name="partyName" th:value="${selectedParty}"
+                    <!--input list="partyList" name="partyName" th:value="${selectedParty}"
                            placeholder="Type or select…" autocomplete="off"/>
                     <datalist id="partyList">
                         <option th:each="p : ${partyNames}" th:value="${p}"></option>
-                    </datalist>
+                    </datalist-->
+                    <select name="partyName">
+                        <option value="">-- All Parties --</option>
+                        <option th:each="p : ${partyNames}" th:value="${p}" th:text="${p}"
+                                th:selected="${p == selectedParty}"></option>
+                    </select>
                 </div>
                 <div>
                     <label>From Date</label>

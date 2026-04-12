@@ -36,7 +36,7 @@ select,input[type=date],input[type=number]{padding:10px 12px;border:1px solid #c
         <form id="delForm" th:action="@{/deleteEntryF}" method="post">
            
             <label>Party Name</label>
-<input type="text" 
+<!--input type="text" 
        id="partyInput" 
        list="partyList" name="partyName"
        placeholder="Type or select party..." 
@@ -46,7 +46,11 @@ select,input[type=date],input[type=number]{padding:10px 12px;border:1px solid #c
 
 <datalist id="partyList">
     <option th:each="p : ${partyNames}" th:value="${p}"></option>
-</datalist>
+</datalist-->
+<select th:field="*{partyName}" required>
+    <option value="">-- Select Party --</option>
+    <option th:each="p : ${partyNames}" th:value="${p}" th:text="${p}"></option>
+</select>
             <label>Date</label>
             <input type="date" name="date" id="dateInput" required onchange="loadCylinders()"/>
             <div class="cyl-section">
@@ -75,16 +79,6 @@ async function loadCylinders() {
     const party = document.getElementById('partyInput').value.trim();
     const date  = document.getElementById('dateInput').value;
     if (!party || !date) return;
-
-    const datalist = document.getElementById('partyList');
-    const options = Array.from(datalist.options).map(opt => opt.value);
-
-    // If the input has a value but it's not in our list
-    if (party && !options.includes(party) {
-        // Optional: you can let them keep typing, 
-        // but don't execute the backend load until it's a valid match
-        return; 
-    }
 
     const resp = await fetch(`/deleteEntryF/cylinders?partyName=${encodeURIComponent(party)}&date=${date}`);
     const cyls = await resp.json();

@@ -62,11 +62,16 @@
             <div class="filter-grid">
                 <div>
                     <label>Party</label>
-                    <input list="partyList" name="partyName" th:value="${selectedParty}"
+                    <!--input list="partyList" name="partyName" th:value="${selectedParty}"
                            placeholder="Type or select…" autocomplete="off"/>
                     <datalist id="partyList">
                         <option th:each="p : ${partyNames}" th:value="${p}"></option>
-                    </datalist>
+                    </datalist-->
+                    <select name="partyName">
+                        <option value="">-- Select Party --</option>
+                        <option th:each="p : ${partyNames}" th:value="${p}" th:text="${p}"
+                                th:selected="${p == selectedParty}"></option>
+                    </select>
                 </div>
                 <div>
                     <label>OR Cylinder Number</label>
@@ -107,7 +112,7 @@
             <thead>
                 <tr>
                     <th>Date</th>
-                    <th>Cyl No.</th>
+                    <th>Cylinder No</th>
                     <th>Gas Type</th>
                     <th>Status</th>
                     <th>Customer</th>

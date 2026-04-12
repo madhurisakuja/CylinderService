@@ -65,7 +65,7 @@ input,select{padding:10px 12px;border:1px solid #ccc;border-radius:4px;font-size
             <input type="hidden" name="tc"       id="stc"/>
           
             <label for="singleParty">Party</label>
-            <input type="text" 
+            <!--input type="text" 
                 id="singleParty" 
                 name="partyName" 
                 list="partyDatalist" 
@@ -76,7 +76,11 @@ input,select{padding:10px 12px;border:1px solid #ccc;border-radius:4px;font-size
 
             <datalist id="partyDatalist">
                 <option th:each="p : ${partyNames}" th:value="${p}"></option>
-            </datalist>
+            </datalist-->
+            <select name="partyName" required style="width:280px">
+                <option value="">-- Select Party --</option>
+                <option th:each="p : ${partyNames}" th:value="${p}" th:text="${p}"></option>
+            </select>
             <div class="section-lbl">Adjustments (optional)</div>
             <div class="form-grid-3">
                 <div><label>Discount ₹ <span style="color:#999;font-weight:normal">(goodwill)</span></label>

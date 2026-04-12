@@ -59,7 +59,7 @@
                     
                 </select-->
 
-                <input list="partyDatalist" 
+                <!--input list="partyDatalist" 
                 name="partyName"
                 id="partyName" 
                 placeholder="Type to search party..." 
@@ -69,8 +69,13 @@
          
                  <datalist id="partyNamesList">
                   <option th:each="name : ${partyNames}" th:value="${name}" th:text="${name}"></option>
-                 </datalist>
+                 </datalist-->
 
+                 <select id="partyName">
+                    <option value="">-- Select Party --</option>
+                    <option th:each="p : ${partyNames}" th:value="${p}" th:text="${p}"></option>
+                 </select>
+                 
             </div>
             <div>
                 <label>Date</label>
