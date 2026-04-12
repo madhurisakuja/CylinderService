@@ -47,7 +47,7 @@ select,input[type=date],input[type=number]{padding:10px 12px;border:1px solid #c
 <datalist id="partyList">
     <option th:each="p : ${partyNames}" th:value="${p}"></option>
 </datalist-->
-<select th:field="*{partyName}" required>
+<select name="partyName" required id="partyName">
     <option value="">-- Select Party --</option>
     <option th:each="p : ${partyNames}" th:value="${p}" th:text="${p}"></option>
 </select>

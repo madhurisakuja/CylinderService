@@ -124,7 +124,12 @@ async function submitEntry() {
     if (data.saved.length) html += `<div class="msg-success">Saved: ${data.saved.join(', ')}</div>`;
     if (data.errors.length) html += `<div class="msg-error">Issues: ${data.errors.join('<br/>')}</div>`;
     document.getElementById('result-content').innerHTML = html;
-    if (data.saved.length && !data.errors.length) document.getElementById('rows').innerHTML = '';
+    if (data.saved.length && !data.errors.length) 
+    if (data.saved.length && !data.errors.length) {
+            document.getElementById('rows').innerHTML = '';
+            count = 0;
+            addRow(); // Reset with one blank row
+        }
     count=0;
 }
 addRow();
