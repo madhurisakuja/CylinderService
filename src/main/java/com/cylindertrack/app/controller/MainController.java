@@ -97,8 +97,30 @@ public class MainController {
     @PostMapping("/newEntryF")
     @ResponseBody
     public Map<String, Object> newEntryPost(@RequestBody List<Map<String, String>> rows) {
-        List<String> saved = new ArrayList<>();
+        Map<String, Object> resp = new HashMap<>();
+        List<String> saved  = new ArrayList<>();
         List<String> errors = new ArrayList<>();
+
+        if (rows.isEmpty()) {
+            errors.add("No rows submitted.");
+            resp.put("saved", saved); resp.put("errors", errors); return resp;
+        }
+
+        // Pre-check: reject the entire batch if an entry already exists for this party+date
+        try {
+            String partyName = rows.get(0).get("partyName");
+            Date   date      = parseDate(rows.get(0).get("date"));
+            List<MainEntry> existing = mainEntryRepo.findByPartyAndDate(partyName, date);
+            if (!existing.isEmpty()) {
+                String dateStr = new SimpleDateFormat("dd-MM-yyyy").format(date);
+                errors.add("Entry for " + partyName + " on " + dateStr + " already exists. " +
+                            "Delete the entry first if you want to make another entry for this date.");
+                resp.put("saved", saved); resp.put("errors", errors); return resp;
+            }
+        } catch (Exception ex) {
+            errors.add("Error validating entry: " + ex.getMessage());
+            resp.put("saved", saved); resp.put("errors", errors); return resp;
+        }
 
         for (Map<String, String> row : rows) {
             try {
@@ -124,7 +146,6 @@ public class MainController {
             }
         }
 
-        Map<String, Object> resp = new HashMap<>();
         resp.put("saved", saved);
         resp.put("errors", errors);
         return resp;
@@ -145,8 +166,30 @@ public class MainController {
     @PostMapping("/purchaseEntryF")
     @ResponseBody
     public Map<String, Object> purchaseEntryPost(@RequestBody List<Map<String, String>> rows) {
-        List<String> saved = new ArrayList<>();
+        Map<String, Object> resp = new HashMap<>();
+        List<String> saved  = new ArrayList<>();
         List<String> errors = new ArrayList<>();
+
+        if (rows.isEmpty()) {
+            errors.add("No rows submitted.");
+            resp.put("saved", saved); resp.put("errors", errors); return resp;
+        }
+
+        // Pre-check: reject the entire batch if an entry already exists for this party+date
+        try {
+            String partyName = rows.get(0).get("partyName");
+            Date   date      = parseDate(rows.get(0).get("date"));
+            List<MainEntry> existing = mainEntryRepo.findByPartyAndDate(partyName, date);
+            if (!existing.isEmpty()) {
+                String dateStr = new SimpleDateFormat("dd-MM-yyyy").format(date);
+                errors.add("Entry for " + partyName + " on " + dateStr + " already exists. " +
+                            "Delete the entry first if you want to make another entry for this date.");
+                resp.put("saved", saved); resp.put("errors", errors); return resp;
+            }
+        } catch (Exception ex) {
+            errors.add("Error validating entry: " + ex.getMessage());
+            resp.put("saved", saved); resp.put("errors", errors); return resp;
+        }
 
         for (Map<String, String> row : rows) {
             try {
@@ -171,7 +214,6 @@ public class MainController {
             }
         }
 
-        Map<String, Object> resp = new HashMap<>();
         resp.put("saved", saved);
         resp.put("errors", errors);
         return resp;

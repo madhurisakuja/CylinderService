@@ -122,9 +122,11 @@ public class BillingController {
         Map<String, ?> flash = RequestContextUtils.getInputFlashMap(request);
         if (flash != null) model.addAttribute("saveSuccess", flash.get("saveSuccess"));
         List<String> allParties = partyNamesRepository.getAllPartyNames();
-        String preloaded = (party!=null&&!party.isBlank()) ? party : (allParties.isEmpty()?"":allParties.get(allParties.size()-1));
-        PartyAccount existing = partyAccountRepository.findByPartyName(preloaded).orElse(new PartyAccount());
-        if (existing.getPartyName()==null) existing.setPartyName(preloaded);
+        String preloaded = (party != null && !party.isBlank()) ? party : "";
+        PartyAccount existing = preloaded.isBlank()
+            ? new PartyAccount()
+            : partyAccountRepository.findByPartyName(preloaded).orElse(new PartyAccount());
+        if (existing.getPartyName() == null) existing.setPartyName(preloaded);
         model.addAttribute("partyAccount", existing);
         model.addAttribute("partyNames",   allParties);
         model.addAttribute("allAccounts",  partyAccountRepository.findAll());

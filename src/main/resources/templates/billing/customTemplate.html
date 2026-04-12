@@ -52,10 +52,11 @@
     <div class="card">
         <form th:action="@{/billing/custom-template}" method="post">
             <label>Party</label>
-            <select id="partyInput" th:field="*{partyName}">
+            
+             <select name="partyName" id="partyInput" required style="width:280px">
                 <option value="">-- Select Party --</option>
                 <option th:each="p : ${partyNames}" th:value="${p}" th:text="${p}"></option>
-             </select>
+            </select>
             <!--input type="text" 
                    th:field="*{partyName}" 
                    id="partyInput" 
