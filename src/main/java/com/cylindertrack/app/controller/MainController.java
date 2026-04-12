@@ -248,8 +248,12 @@ public class MainController {
     }
 
     /**
-     * Loads bulk entries for party+date so the JS can render cylinder number input forms.
-     * Also returns cylinders currently FULL at this party per type for EMPTY dropdown suggestions.
+     * Loads bulk entries for party+date.
+     * Returns:
+     *   entries      — bulk MainEntry rows (ctype, cfull, cempty)
+     *   fullAtParty  — cylinders currently FULL at this party per gas type (for EMPTY dropdown)
+     *   savedFull    — already-saved cylinder numbers for FULL per ctype (for preloading)
+     *   savedEmpty   — already-saved cylinder numbers for EMPTY per ctype (for preloading)
      */
     @GetMapping("/cylinderNumbers/load")
     @ResponseBody
@@ -259,11 +263,21 @@ public class MainController {
 
         List<MainEntry> bulkEntries = mainEntryRepo.findByPartyAndDate(partyName, date);
 
-        // Build map: gasType → list of cylinder numbers currently FULL at this party
+        // Cylinders FULL at this party per type — candidates for EMPTY return dropdown
         Map<String, List<Long>> fullAtParty = new LinkedHashMap<>();
         for (CylinderTypeF t : CylinderTypeF.values()) {
             List<Long> cyls = entryService.getCylindersFullAtParty(partyName, t.name());
             if (!cyls.isEmpty()) fullAtParty.put(t.name(), cyls);
+        }
+
+        // Already-saved cylinders for this party+date — preload into inputs
+        Map<String, List<Long>> savedFull  = new LinkedHashMap<>();
+        Map<String, List<Long>> savedEmpty = new LinkedHashMap<>();
+        for (CylinderTypeF t : CylinderTypeF.values()) {
+            List<Long> sf = cylinderRepo.findSavedCylinders(partyName, date, t.name(), "FULL");
+            List<Long> se = cylinderRepo.findSavedCylinders(partyName, date, t.name(), "EMPTY");
+            if (!sf.isEmpty()) savedFull.put(t.name(),  sf);
+            if (!se.isEmpty()) savedEmpty.put(t.name(), se);
         }
 
         // Serialise bulk entries as simple maps
@@ -281,25 +295,66 @@ public class MainController {
         Map<String, Object> resp = new LinkedHashMap<>();
         resp.put("entries",     entries);
         resp.put("fullAtParty", fullAtParty);
+        resp.put("savedFull",   savedFull);
+        resp.put("savedEmpty",  savedEmpty);
         return resp;
     }
 
-    /** Save individual cylinder number entries */
+    /**
+     * Save / update cylinder number entries.
+     * Uses upsert pattern: for each ctype+fullType combination present in the submitted rows,
+     * delete all existing entries for that combination first, then insert the new ones.
+     * This means reloading and re-submitting a partial set correctly replaces prior entries.
+     * Blank cylinder numbers in the batch are silently skipped.
+     */
     @PostMapping("/cylinderNumbers/save")
     @ResponseBody
+    @jakarta.transaction.Transactional
     public Map<String, Object> saveCylinderNumbers(@RequestBody List<Map<String, String>> rows) {
         int saved = 0;
         List<String> warnings = new ArrayList<>();
+        Set<Long> seenInBatch  = new LinkedHashSet<>();  // duplicate-within-batch check
+        Set<String> deletedSlots = new LinkedHashSet<>(); // track which ctype+status slots were cleared
 
+        // First pass: validate and collect valid rows
+        List<Map<String, String>> validRows = new ArrayList<>();
         for (Map<String, String> row : rows) {
+            String rawNo = row.get("cylinderNo");
+            if (rawNo == null || rawNo.isBlank()) continue;
             try {
-                Long cylinderNo = Long.parseLong(row.get("cylinderNo").trim());
+                long n = Long.parseLong(rawNo.trim());
+                if (n <= 0) continue;
+                row.put("cylinderNo", String.valueOf(n));
+                validRows.add(row);
+            } catch (NumberFormatException e) {
+                warnings.add("Skipped non-numeric value: " + rawNo);
+            }
+        }
+
+        // Second pass: upsert
+        for (Map<String, String> row : validRows) {
+            try {
+                Long cylinderNo  = Long.parseLong(row.get("cylinderNo"));
                 String partyName = row.get("partyName");
                 String ctype     = row.get("ctype");
                 Date   date      = parseDate(row.get("date"));
                 String status    = row.get("status"); // FULL or EMPTY
 
-                // Check if this is a new FULL for a cylinder whose last status is also FULL
+                // Clear existing entries for this ctype+status once per slot group
+                String slotKey = partyName + "|" + row.get("date") + "|" + ctype + "|" + status;
+                if (!deletedSlots.contains(slotKey)) {
+                    cylinderRepo.deleteByPartyDateCtypeAndFullType(partyName, date, ctype, status.toUpperCase());
+                    deletedSlots.add(slotKey);
+                }
+
+                // Duplicate within this batch
+                if (seenInBatch.contains(cylinderNo)) {
+                    warnings.add("Duplicate in batch — cylinder " + cylinderNo + " skipped.");
+                    continue;
+                }
+                seenInBatch.add(cylinderNo);
+
+                // Warn if FULL and last status was also FULL
                 if ("FULL".equalsIgnoreCase(status)) {
                     String lastStatus = cylinderRepo.getCylinderStatus(cylinderNo);
                     if ("FULL".equalsIgnoreCase(lastStatus)) {
@@ -309,7 +364,7 @@ public class MainController {
                     }
                 }
 
-                // Check EMPTY mismatch — cylinder sent to different party
+                // Warn if EMPTY and cylinder was last held by a different party
                 if ("EMPTY".equalsIgnoreCase(status)) {
                     String lastCustomer = cylinderRepo.getCylinderHoldingStatus(cylinderNo);
                     if (lastCustomer != null && !lastCustomer.equalsIgnoreCase(partyName)) {
@@ -326,8 +381,8 @@ public class MainController {
                 cylinderRepo.saveAndFlush(ce);
                 saved++;
             } catch (Exception ex) {
-                warnings.add("ERROR:" + ex.getMessage());
-                log.error("Cylinder number save error", ex);
+                warnings.add("Error saving row: " + ex.getMessage());
+                log.error("Cylinder save error", ex);
             }
         }
 

@@ -80,203 +80,252 @@
         </div>
     </div>
 
-    <div class="hint" id="hintMsg">Select a party and date then click Load to see the entry forms.</div>
-
+    <div id="globalMessages"></div>
+    <div class="hint" id="hintMsg">Select a party and date then click Load.</div>
     <div id="formsArea"></div>
-
-    <div id="result-area">
-        <div id="result-content"></div>
-    </div>
-    <div id="submitBtnArea" style="display:none;margin-top:8px">
-        <button class="btn btn-green" onclick="saveAll()">Save Cylinder Numbers</button>
-    </div>
 </div>
+
 <script>
-let pendingRows = [];
-const csrfToken = document.querySelector('meta[name="_csrf"]').getAttribute('content');
-const csrfHeader = document.querySelector('meta[name="_csrf_header"]').getAttribute('content');
+const csrf      = () => document.querySelector('meta[name="_csrf"]').content;
+const csrfHdr   = () => document.querySelector('meta[name="_csrf_header"]').content;
+
+// slotData[slotKey] = { party, date, ctype, status, count, savedNos }
+const slotData = {};
 
 async function loadEntries() {
-    const party = document.getElementById('filterParty').value;
+    const party = document.getElementById('filterParty').value.trim();
     const date  = document.getElementById('filterDate').value;
     if (!party || !date) { alert('Select both party and date.'); return; }
 
     const resp = await fetch(`/cylinderNumbers/load?partyName=${encodeURIComponent(party)}&date=${date}`, {
-        headers: {
-            'Content-Type': 'application/json',
-            [csrfHeader]: csrfToken
-        }
+        headers: { [csrfHdr()]: csrf() }
     });
+    if (!resp.ok) { alert('Failed to load entries. Check server logs.'); return; }
     const data = await resp.json();
 
     document.getElementById('hintMsg').style.display = 'none';
+    document.getElementById('globalMessages').innerHTML = '';
     const area = document.getElementById('formsArea');
     area.innerHTML = '';
-    pendingRows = [];
 
-    if (!data.entries.length) {
+    if (!data.entries || !data.entries.length) {
         area.innerHTML = '<div class="hint">No bulk entries found for this party and date. Make a New Entry first.</div>';
-        document.getElementById('submitBtnArea').style.display = 'none';
         return;
     }
 
     for (const entry of data.entries) {
-        const fullAtParty = data.fullAtParty[entry.ctype] || [];
+        const fullAtParty  = data.fullAtParty  && data.fullAtParty[entry.ctype]  ? data.fullAtParty[entry.ctype]  : [];
+        const savedFull    = data.savedFull    && data.savedFull[entry.ctype]    ? data.savedFull[entry.ctype]    : [];
+        const savedEmpty   = data.savedEmpty   && data.savedEmpty[entry.ctype]   ? data.savedEmpty[entry.ctype]   : [];
 
-        // FULL rows
         if (entry.cfull > 0) {
-            const sec = document.createElement('div');
-            sec.className = 'type-section';
-            sec.innerHTML = `<div class="type-header">${entry.ctype} — ${entry.cfull} Full</div>`;
-            for (let i = 0; i < entry.cfull; i++) {
-                const rowId = `full_${entry.ctype}_${i}`;
-                const div = document.createElement('div');
-                div.className = 'cyl-row full-row';
-                div.innerHTML = `
-                    <span class="cyl-label">${entry.ctype} Full #${i+1}</span>
-                    <input type="number" id="${rowId}" placeholder="Cylinder No." min="1"
-                           oninput="checkFullDuplicate(this, '${entry.ctype}', '${party}')"/>
-                    <span class="warn-msg" id="${rowId}_warn"></span>
-                `;
-                sec.appendChild(div);
-                pendingRows.push({el: rowId, party, date: entry.date, ctype: entry.ctype, status: 'FULL'});
-            }
-            area.appendChild(sec);
+            area.appendChild(buildSlot(party, entry.date, entry.ctype, 'FULL', entry.cfull,
+                                       savedFull, fullAtParty));
         }
-
-        // EMPTY rows
         if (entry.cempty > 0) {
-            const sec = document.createElement('div');
-            sec.className = 'type-section';
-            sec.innerHTML = `<div class="type-header empty-type">${entry.ctype} — ${entry.cempty} Empty Returns</div>`;
-            for (let i = 0; i < entry.cempty; i++) {
-                const rowId = `empty_${entry.ctype}_${i}`;
-                const div = document.createElement('div');
-                div.className = 'cyl-row empty-row';
-
-                let inputHtml;
-                if (fullAtParty.length > 0) {
-                    inputHtml = `<select id="${rowId}" onchange="checkEmptyMismatch(this, '${party}')">
-                        <option value="">-- Select Cylinder --</option>
-                        ${fullAtParty.map(c => `<option value="${c}">${c}</option>`).join('')}
-                        <option value="__new__">Other (enter manually)</option>
-                    </select>
-                    <input type="number" id="${rowId}_manual" placeholder="Cylinder No." min="1"
-                           style="display:none;margin-top:6px" oninput="checkNewEntry(this,'${party}','${entry.ctype}')"/>`;
-                } else {
-                    inputHtml = `<input type="number" id="${rowId}" placeholder="Cylinder No." min="1"
-                                  oninput="checkNewEntry(this,'${party}','${entry.ctype}')"/>`;
-                }
-                div.innerHTML = `
-                    <span class="cyl-label">${entry.ctype} Empty #${i+1}</span>
-                    ${inputHtml}
-                    <span class="warn-msg" id="${rowId}_warn"></span>
-                `;
-                sec.appendChild(div);
-                pendingRows.push({el: rowId, party, date: entry.date, ctype: entry.ctype, status: 'EMPTY'});
-            }
-            area.appendChild(sec);
+            area.appendChild(buildSlot(party, entry.date, entry.ctype, 'EMPTY', entry.cempty,
+                                       savedEmpty, fullAtParty));
         }
     }
-    document.getElementById('submitBtnArea').style.display = 'block';
 }
 
-function checkFullDuplicate(input, ctype, party) {
-    const warn = document.getElementById(input.id + '_warn');
-    // Warning shown server-side on save; clear on input
-    warn.textContent = '';
-}
+function buildSlot(party, date, ctype, status, count, savedNos, fullAtParty) {
+    const slotKey = `${ctype}|${status}`;
+    slotData[slotKey] = { party, date, ctype, status, count, savedNos };
 
-function checkEmptyMismatch(sel, party) {
-    const warn = document.getElementById(sel.id + '_warn');
-    const manual = document.getElementById(sel.id + '_manual');
-    if (sel.value === '__new__') {
-        manual.style.display = 'block';
-        warn.textContent = `⚠ This is a new entry for a full not supplied to ${party}.`;
-    } else {
-        if (manual) manual.style.display = 'none';
-        warn.textContent = '';
-    }
-}
+    const block = document.createElement('div');
+    block.className = 'slot-block';
+    block.id = `slot_${slotKey.replace('|','_')}`;
 
-function checkNewEntry(input, party, ctype) {
-    const warn = document.getElementById(input.id.replace('_manual','') + '_warn');
-    if (input.value) warn.textContent = `⚠ Cylinder ${input.value} — verify it was sent as FULL to ${party}.`;
-    else warn.textContent = '';
-}
+    const savedCount = savedNos.length;
+    const headerClass = status === 'FULL' ? 'full' : 'empty';
+    const dirLabel    = status === 'FULL' ? '▲ Full Out' : '▼ Empty Return';
+    const statusLabel = savedCount > 0
+        ? `<span class="saved-badge">${savedCount}/${count} saved</span>`
+        : `<span class="slot-status">${count} needed</span>`;
 
-async function saveAll() {
-    const rows = [];
-    for (const r of pendingRows) {
-        const el = document.getElementById(r.el);
-        let cylinderNo = '';
-        if (el.tagName === 'SELECT') {
-            if (el.value === '__new__') {
-                const manual = document.getElementById(r.el + '_manual');
-                cylinderNo = manual ? manual.value.trim() : '';
-            } else {
-                cylinderNo = el.value;
+    block.innerHTML = `
+        <div class="slot-header ${headerClass}">
+            <span>${ctype} — ${dirLabel} &nbsp;${statusLabel}</span>
+            <button class="btn-save" onclick="saveSlot('${slotKey}')">Save ${ctype} ${status}</button>
+        </div>
+        <div class="slot-body" id="body_${slotKey.replace('|','_')}"></div>
+    `;
+
+    const body = block.querySelector('.slot-body');
+
+    for (let i = 0; i < count; i++) {
+        const rowId   = `inp_${ctype}_${status}_${i}`;
+        const warnId  = `warn_${ctype}_${status}_${i}`;
+        const preVal  = savedNos[i] != null ? savedNos[i] : '';
+        const row     = document.createElement('div');
+        row.className = 'cyl-row';
+
+        if (status === 'EMPTY' && fullAtParty.length > 0) {
+            // Dropdown of cylinders known to be FULL at this party
+            const opts = fullAtParty.map(c =>
+                `<option value="${c}" ${c == preVal ? 'selected' : ''}>${c}</option>`
+            ).join('');
+            row.innerHTML = `
+                <span class="cyl-label">#${i+1}</span>
+                <div>
+                    <select id="${rowId}" onchange="handleEmptySelect(this,'${rowId}','${party}','${ctype}')">
+                        <option value="">-- Select --</option>
+                        ${opts}
+                        <option value="__new__">Other…</option>
+                    </select>
+                    <input type="number" id="${rowId}_manual" placeholder="Enter cylinder no." min="1"
+                           style="display:none;margin-top:6px;width:100%"
+                           value="${preVal && !fullAtParty.includes(Number(preVal)) ? preVal : ''}"
+                           oninput="checkWarn(this,'${party}','${ctype}','${warnId}')"/>
+                    <div class="warn" id="${warnId}"></div>
+                </div>
+                <span></span>
+            `;
+            // If preVal was from "other", show manual input
+            if (preVal && !fullAtParty.includes(Number(preVal))) {
+                setTimeout(() => {
+                    const sel = document.getElementById(rowId);
+                    if (sel) sel.value = '__new__';
+                    const man = document.getElementById(`${rowId}_manual`);
+                    if (man) man.style.display = 'block';
+                }, 0);
             }
         } else {
-            cylinderNo = el.value.trim();
+            row.innerHTML = `
+                <span class="cyl-label">#${i+1}</span>
+                <div>
+                    <input type="number" id="${rowId}" placeholder="Cylinder No." min="1"
+                           value="${preVal}" style="width:100%"
+                           oninput="checkWarn(this,'${party}','${ctype}','${warnId}')"/>
+                    <div class="warn" id="${warnId}"></div>
+                </div>
+                <span></span>
+            `;
         }
-        if (!cylinderNo) continue;
-        // Key must match row.get("cylinderNo") in Java
-        rows.push({cylinderNo, partyName: r.party, ctype: r.ctype, date: r.date, status: r.status});
+        body.appendChild(row);
     }
 
-    if (!rows.length) { alert('No cylinder numbers entered.'); return; }
+    return block;
+}
 
-    // CSRF fetch from meta tags
-    const csrfToken = document.querySelector('meta[name="_csrf"]').getAttribute('content');
-    const csrfHeader = document.querySelector('meta[name="_csrf_header"]').getAttribute('content');
+function handleEmptySelect(sel, rowId, party, ctype) {
+    const manualId = `${rowId}_manual`;
+    const manual = document.getElementById(manualId);
+    if (sel.value === '__new__') {
+        manual.style.display = 'block';
+        document.getElementById(`warn_${rowId.replace('inp_','')}`).textContent =
+            `⚠ This cylinder was not recorded as sent FULL to ${party}.`;
+    } else {
+        manual.style.display = 'none';
+        document.getElementById(`warn_${rowId.replace('inp_','')}`).textContent = '';
+    }
+}
+
+function checkWarn(input, party, ctype, warnId) {
+    const w = document.getElementById(warnId);
+    if (!w) return;
+    w.textContent = input.value ? `⚠ Verify cylinder ${input.value} was sent FULL to ${party}.` : '';
+}
+
+async function saveSlot(slotKey) {
+    const sd = slotData[slotKey];
+    if (!sd) return;
+
+    const { party, date, ctype, status, count } = sd;
+    const rows = [];
+    const seen = new Set();
+
+    for (let i = 0; i < count; i++) {
+        const rowId = `inp_${ctype}_${status}_${i}`;
+        const el = document.getElementById(rowId);
+        if (!el) continue;
+
+        let val = '';
+        if (el.tagName === 'SELECT') {
+            val = el.value === '__new__'
+                ? (document.getElementById(`${rowId}_manual`) || {value:''}).value.trim()
+                : el.value;
+        } else {
+            val = el.value.trim();
+        }
+        if (!val || val === '0') continue;  // skip blanks
+
+        const n = parseInt(val);
+        if (isNaN(n) || n <= 0) continue;
+        if (seen.has(n)) {
+            showSlotMessage(slotKey, 'warn', `Duplicate cylinder ${n} in this batch — keeping first.`);
+            continue;
+        }
+        seen.add(n);
+        rows.push({ cylinderNo: String(n), partyName: party, ctype, date, status });
+    }
+
+    if (!rows.length) {
+        showSlotMessage(slotKey, 'warn', 'No cylinder numbers entered — nothing saved.');
+        return;
+    }
+
+    const btn = document.querySelector(`#slot_${slotKey.replace('|','_')} .btn-save`);
+    if (btn) { btn.disabled = true; btn.textContent = 'Saving…'; }
 
     try {
         const resp = await fetch('/cylinderNumbers/save', {
             method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                [csrfHeader]: csrfToken
-            },
+            headers: { 'Content-Type': 'application/json', [csrfHdr()]: csrf() },
             body: JSON.stringify(rows)
         });
 
-        // If we get a 403 or 500, don't try to parse warnings
         if (!resp.ok) {
-            const errorText = await resp.text();
-            console.error("Server Error:", errorText);
-            alert(`Error ${resp.status}: Could not save. Check console for details.`);
+            showSlotMessage(slotKey, 'error', `Server error ${resp.status}. Check logs.`);
             return;
         }
 
         const data = await resp.json();
-        const area = document.getElementById('result-area');
-        const content = document.getElementById('result-content');
-        area.style.display = 'block';
-        
         let html = '';
-        if (data.saved > 0) html += `<div class="msg-success">${data.saved} cylinder number(s) saved.</div>`;
-
-        // SAFE ITERATION: Check if warnings exists and is an array
-        if (data.warnings && Array.isArray(data.warnings)) {
+        if (data.saved > 0)
+            html += `<div class="msg-success">✓ ${data.saved} cylinder(s) saved for ${ctype} ${status}.</div>`;
+        if (data.warnings && data.warnings.length) {
             data.warnings.forEach(w => {
                 if (w.startsWith('DUPLICATE_FULL:')) {
-                    const parts = w.split(':');
-                    html += `<div class="msg-error">⚠ Cylinder ${parts[1]}: last entry was also FULL. ${parts[2] ? '<br>Cylinders at party: ' + parts[2] : ''}</div>`;
+                    const p = w.split(':');
+                    html += `<div class="msg-warn">⚠ Cylinder ${p[1]}: last status was also FULL.${p[2]?' Cylinders at party: '+p[2]:''}</div>`;
                 } else if (w.startsWith('PARTY_MISMATCH:')) {
-                    const parts = w.split(':');
-                    html += `<div class="msg-error">⚠ Cylinder ${parts[1]} returned by ${parts[3]} (Last at ${parts[2]}).</div>`;
+                    const p = w.split(':');
+                    html += `<div class="msg-warn">⚠ Cylinder ${p[1]} was last with <b>${p[2]}</b>, being returned by <b>${p[3]}</b>.</div>`;
                 } else {
-                    html += `<div class="msg-error">${w}</div>`;
+                    html += `<div class="msg-warn">${w}</div>`;
                 }
             });
         }
-        content.innerHTML = html;
 
-    } catch (e) {
-        console.error("Fetch failed:", e);
-        alert("Network error: Is the server down?");
+        // Update saved badge
+        const badge = document.querySelector(`#slot_${slotKey.replace('|','_')} .saved-badge, #slot_${slotKey.replace('|','_')} .slot-status`);
+        if (badge) {
+            badge.className = 'saved-badge';
+            badge.textContent = `${data.saved}/${sd.count} saved`;
+        }
+
+        // Show messages inside the slot
+        const body = document.getElementById(`body_${slotKey.replace('|','_')}`);
+        const msgDiv = document.createElement('div');
+        msgDiv.innerHTML = html;
+        body.prepend(msgDiv);
+
+    } catch(e) {
+        showSlotMessage(slotKey, 'error', 'Network error: ' + e.message);
+    } finally {
+        if (btn) { btn.disabled = false; btn.textContent = `Save ${ctype} ${status}`; }
     }
+}
+
+function showSlotMessage(slotKey, type, msg) {
+    const body = document.getElementById(`body_${slotKey.replace('|','_')}`);
+    if (!body) return;
+    const div = document.createElement('div');
+    div.className = type === 'error' ? 'msg-error' : 'msg-warn';
+    div.textContent = msg;
+    body.prepend(div);
 }
 </script>
 </body>

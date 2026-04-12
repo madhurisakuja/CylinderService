@@ -74,7 +74,19 @@ public interface NewCylinderFService extends JpaRepository<MainCylinderEntry, Lo
            "where e.customerName=?1 and DATE(e.date)=DATE(?2) and e.cylinderNo=?3")
     void deleteByPartyDateAndCylinder(String partyName, Date date, Long cylinderNo);
 
+    /** Delete all entries for a party+date+ctype+fullType — used before re-saving a slot batch */
+    @Modifying @Transactional
+    @Query("delete from MainCylinderEntry e " +
+           "where e.customerName=?1 and DATE(e.date)=DATE(?2) and e.ctype=?3 and e.fullType=?4")
+    void deleteByPartyDateCtypeAndFullType(String partyName, Date date, String ctype, String fullType);
+
     @Query("select c.cylinderNo from MainCylinderEntry c " +
            "where c.customerName=?1 and DATE(c.date)=DATE(?2) order by c.cylinderNo asc")
     List<Long> findCylinderNumbersByPartyAndDate(String partyName, Date date);
+
+    /** Already-saved cylinder numbers for a specific party+date+ctype+fullType — for preloading the form */
+    @Query("select c.cylinderNo from MainCylinderEntry c " +
+           "where c.customerName=?1 and DATE(c.date)=DATE(?2) and c.ctype=?3 and c.fullType=?4 " +
+           "order by c.cylinderNo asc")
+    List<Long> findSavedCylinders(String partyName, Date date, String ctype, String fullType);
 }

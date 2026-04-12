@@ -77,7 +77,7 @@ input,select{padding:10px 12px;border:1px solid #ccc;border-radius:4px;font-size
             <datalist id="partyDatalist">
                 <option th:each="p : ${partyNames}" th:value="${p}"></option>
             </datalist-->
-            <select name="partyName" required style="width:280px">
+            <select name="partyName" id="singleParty" required style="width:280px">
                 <option value="">-- Select Party --</option>
                 <option th:each="p : ${partyNames}" th:value="${p}" th:text="${p}"></option>
             </select>
@@ -135,7 +135,7 @@ function previewBill(){
     const t = document.getElementById('tcInput').value;
     window.open(`/billing/preview?partyName=${encodeURIComponent(party)}&fromDate=${from}&toDate=${to}&discount=${d}&security=${s}&tc=${t}`, '_blank');
 }
-function validateAndLoad() {
+/*function validateAndLoad() {
     const input = document.getElementById('singleParty');
     const datalist = document.getElementById('partyDatalist');
     
@@ -147,7 +147,7 @@ function validateAndLoad() {
         input.value = ""; // Clear invalid text
         return;
     }
-}
+}*/
 // Default to current month
 const now = new Date();
 const y = now.getFullYear(), m = String(now.getMonth()+1).padStart(2,'0');

@@ -46,7 +46,7 @@ public interface MainEntryRepository extends JpaRepository<MainEntry, Long> {
     /** Holding summary filtered by date range */
     @Query("select e from MainEntry e where e.id = " +
            "(select max(e2.id) from MainEntry e2 where e2.partyName=e.partyName " +
-           " and e2.ctype=e.ctype and e2.isPurchase=false " +
+           " and e2.ctype=e.ctype and (e2.isPurchase=false or e2.isPurchase is null) " +
            " and DATE(e2.date)>=DATE(?1) and DATE(e2.date)<=DATE(?2)) " +
            "order by e.partyName asc, e.ctype asc")
     List<MainEntry> getCurrentHoldingSummaryForRange(Date fromDate, Date toDate);

@@ -9,27 +9,18 @@ import java.util.List;
 @Repository
 public interface BillingRepository extends JpaRepository<MainEntry, Long> {
 
-    /**
-     * Sum of cfull per gas type for a party in the given month.
-     * Billing is based on purchase/sales entries (MainEntry), not cylinder numbers.
-     */
-    @Query("select e.ctype, sum(e.cfull) " +
-           "from MainEntry e " +
-           "where e.partyName = ?1 " +
-           "  and e.isPurchase = false " +
-           "  and DATE(e.date) >= DATE(?2) " +
-           "  and DATE(e.date) <= DATE(?3) " +
-           "group by e.ctype " +
-           "order by e.ctype")
+    @Query("select e.ctype, sum(e.cfull) from MainEntry e " +
+           "where e.partyName=?1 and (e.isPurchase=false or e.isPurchase is null) " +
+           "  and DATE(e.date)>=DATE(?2) and DATE(e.date)<=DATE(?3) " +
+           "group by e.ctype order by e.ctype")
     List<Object[]> findBillableEntriesGrouped(String partyName, Date fromDate, Date toDate);
 
     /**
      * All sales parties with activity in a given month — for bulk generation.
      */
     @Query("select distinct e.partyName from MainEntry e " +
-           "where e.isPurchase = false " +
-           "  and DATE(e.date) >= DATE(?1) " +
-           "  and DATE(e.date) <= DATE(?2) " +
+           "where (e.isPurchase=false or e.isPurchase is null) " +
+           "  and DATE(e.date)>=DATE(?1) and DATE(e.date)<=DATE(?2) " +
            "order by e.partyName")
     List<String> findPartiesWithActivityInMonth(Date fromDate, Date toDate);
 

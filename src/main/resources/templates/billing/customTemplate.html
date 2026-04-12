@@ -52,7 +52,7 @@
     <div class="card">
         <form th:action="@{/billing/custom-template}" method="post">
             <label>Party</label>
-            <select id="partyInput">
+            <select id="partyInput" th:field="*{partyName}">
                 <option value="">-- Select Party --</option>
                 <option th:each="p : ${partyNames}" th:value="${p}" th:text="${p}"></option>
              </select>
@@ -67,7 +67,7 @@
             
             <datalist id="partyList">
                 <option th:each="p : ${partyNames}" th:value="${p}"></option>
-            </datalist-->
+            </datalist>-->
 
             <button type="submit" class="btn btn-blue">&#8659; Download Template (.xlsx)</button>
         </form>
