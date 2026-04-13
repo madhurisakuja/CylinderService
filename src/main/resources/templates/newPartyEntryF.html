@@ -22,10 +22,15 @@ td{padding:8px 10px;border-bottom:1px solid #eee;}
 </head>
 <body>
 <div class="topnav">
-    <a th:href="@{/newhome}">Home</a><a th:href="@{/newEntryF}">New Entry</a>
-    <a th:href="@{/purchaseEntryF}">Purchase</a><a th:href="@{/historyHolding}">History</a>
+    
+    <a th:href="@{/newhome}">Home</a>
+    <a th:href="@{/newEntryF}">New Entry</a>
+    <a th:href="@{/purchaseEntryF}">Purchase</a>
+    <a th:href="@{/cylinderNumbers}">Cyl. Numbers</a>
+    <a th:href="@{/historyHolding}">History</a>
     <a th:href="@{/deleteEntryF}">Delete</a>
-    <a class="active" th:href="@{/newPartyEntryF}">Parties</a><a th:href="@{/billing/generate}">Billing</a>
+    <a class="active" th:href="@{/newPartyEntryF}">Parties</a>
+    <a th:href="@{/billing/generate}">Billing</a>
 </div>
 <div class="content">
     <h2>Party Management</h2>

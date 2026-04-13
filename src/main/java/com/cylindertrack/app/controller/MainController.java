@@ -251,20 +251,28 @@ public class MainController {
     public RedirectView deleteEntryPost(
             @RequestParam String partyName,
             @RequestParam @DateTimeFormat(pattern = "yyyy-MM-dd") Date date,
+            @RequestParam(required = false) String scope,        // "all" or "cylinder"
             @RequestParam(required = false) Long cylinderNo,
             RedirectAttributes ra) {
 
-        if (cylinderNo != null) {
+        boolean cylScope = "cylinder".equals(scope);
+
+        if (cylScope && cylinderNo != null) {
             // Delete only the specific cylinder entry
             cylinderRepo.deleteByPartyDateAndCylinder(partyName, date, cylinderNo);
             log.info("Deleted cylinder entry: party={} date={} cylinder={}", partyName, date, cylinderNo);
+            ra.addFlashAttribute("deleteSuccess", "Cylinder " + cylinderNo + " entry deleted.");
+        } else if (cylScope) {
+            // Scope was cylinder but no number selected — refuse, don't delete anything
+            ra.addFlashAttribute("deleteError", "No cylinder number selected. Nothing was deleted.");
         } else {
-            // Delete all entries for party+date (both main_entry and cylinder_entries)
+            // Delete all entries for party+date
             mainEntryRepo.deleteByPartyAndDate(partyName, date);
             cylinderRepo.deleteByPartyAndDate(partyName, date);
             log.info("Deleted all entries for party={} date={}", partyName, date);
+            ra.addFlashAttribute("deleteSuccess", "All entries for " + partyName + " on "
+                + new java.text.SimpleDateFormat("dd-MM-yyyy").format(date) + " deleted.");
         }
-        ra.addFlashAttribute("deleteSuccess", true);
         return new RedirectView("/deleteEntryF", true);
     }
 
@@ -305,32 +313,38 @@ public class MainController {
 
         List<MainEntry> bulkEntries = mainEntryRepo.findByPartyAndDate(partyName, date);
 
-        // Cylinders FULL at this party per type — candidates for EMPTY return dropdown
+        // Collect only the gas types that actually appear in this day's entries
+        Set<String> activeTypes = new LinkedHashSet<>();
+        for (MainEntry e : bulkEntries) activeTypes.add(e.getCtype());
+
+        // fullAtParty: only query types that have EMPTY entries on this date (cempty > 0)
+        Set<String> emptyTypes = new LinkedHashSet<>();
+        for (MainEntry e : bulkEntries) if (e.getCempty() > 0) emptyTypes.add(e.getCtype());
+
         Map<String, List<Long>> fullAtParty = new LinkedHashMap<>();
-        for (CylinderTypeF t : CylinderTypeF.values()) {
-            List<Long> cyls = entryService.getCylindersFullAtParty(partyName, t.name());
-            if (!cyls.isEmpty()) fullAtParty.put(t.name(), cyls);
+        for (String t : emptyTypes) {
+            List<Long> cyls = entryService.getCylindersFullAtParty(partyName, t);
+            if (!cyls.isEmpty()) fullAtParty.put(t, cyls);
         }
 
-        // Already-saved cylinders for this party+date — preload into inputs
+        // savedFull / savedEmpty: only query active types, not all 7
         Map<String, List<Long>> savedFull  = new LinkedHashMap<>();
         Map<String, List<Long>> savedEmpty = new LinkedHashMap<>();
-        for (CylinderTypeF t : CylinderTypeF.values()) {
-            List<Long> sf = cylinderRepo.findSavedCylinders(partyName, date, t.name(), "FULL");
-            List<Long> se = cylinderRepo.findSavedCylinders(partyName, date, t.name(), "EMPTY");
-            if (!sf.isEmpty()) savedFull.put(t.name(),  sf);
-            if (!se.isEmpty()) savedEmpty.put(t.name(), se);
+        for (String t : activeTypes) {
+            List<Long> sf = cylinderRepo.findSavedCylinders(partyName, date, t, "FULL");
+            List<Long> se = cylinderRepo.findSavedCylinders(partyName, date, t, "EMPTY");
+            if (!sf.isEmpty()) savedFull.put(t,  sf);
+            if (!se.isEmpty()) savedEmpty.put(t, se);
         }
 
-        // Serialise bulk entries as simple maps
         List<Map<String, Object>> entries = new ArrayList<>();
         for (MainEntry e : bulkEntries) {
             Map<String, Object> m = new LinkedHashMap<>();
-            m.put("id",        e.getId());
-            m.put("ctype",     e.getCtype());
-            m.put("cfull",     e.getCfull());
-            m.put("cempty",    e.getCempty());
-            m.put("date",      new SimpleDateFormat("yyyy-MM-dd").format(e.getDate()));
+            m.put("id",     e.getId());
+            m.put("ctype",  e.getCtype());
+            m.put("cfull",  e.getCfull());
+            m.put("cempty", e.getCempty());
+            m.put("date",   new SimpleDateFormat("yyyy-MM-dd").format(e.getDate()));
             entries.add(m);
         }
 
@@ -355,59 +369,66 @@ public class MainController {
     public Map<String, Object> saveCylinderNumbers(@RequestBody List<Map<String, String>> rows) {
         int saved = 0;
         List<String> warnings = new ArrayList<>();
-        Set<Long> seenInBatch  = new LinkedHashSet<>();  // duplicate-within-batch check
-        Set<String> deletedSlots = new LinkedHashSet<>(); // track which ctype+status slots were cleared
+        Set<Long>   seenInBatch  = new LinkedHashSet<>();
+        Set<String> deletedSlots = new LinkedHashSet<>();
+        // Cache fullAtParty per ctype — same DB result for every row in the same slot
+        Map<String, List<Long>> fullAtPartyCache = new HashMap<>();
+        // Batch entities — one saveAll at end instead of N saveAndFlush calls
+        List<MainCylinderEntry> toSave = new ArrayList<>();
 
-        // First pass: validate and collect valid rows
-        List<Map<String, String>> validRows = new ArrayList<>();
-        for (Map<String, String> row : rows) {
-            String rawNo = row.get("cylinderNo");
-            if (rawNo == null || rawNo.isBlank()) continue;
-            try {
-                long n = Long.parseLong(rawNo.trim());
-                if (n <= 0) continue;
-                row.put("cylinderNo", String.valueOf(n));
-                validRows.add(row);
-            } catch (NumberFormatException e) {
-                warnings.add("Skipped non-numeric value: " + rawNo);
-            }
+        // Parse party+date once — all rows in a batch share them
+        if (rows.isEmpty()) return Map.of("saved", 0, "warnings", warnings);
+        String partyName;
+        Date   date;
+        try {
+            partyName = rows.get(0).get("partyName");
+            date      = parseDate(rows.get(0).get("date"));
+        } catch (Exception e) {
+            warnings.add("Invalid date/party in request.");
+            return Map.of("saved", 0, "warnings", warnings);
         }
 
-        // Second pass: upsert
-        for (Map<String, String> row : validRows) {
+        for (Map<String, String> row : rows) {
+            // Validate + parse cylinder number — single parse, skip blanks/invalid silently
+            String rawNo = row.get("cylinderNo");
+            if (rawNo == null || rawNo.isBlank()) continue;
+            long cylinderNo;
             try {
-                Long cylinderNo  = Long.parseLong(row.get("cylinderNo"));
-                String partyName = row.get("partyName");
-                String ctype     = row.get("ctype");
-                Date   date      = parseDate(row.get("date"));
-                String status    = row.get("status"); // FULL or EMPTY
+                cylinderNo = Long.parseLong(rawNo.trim());
+                if (cylinderNo <= 0) continue;
+            } catch (NumberFormatException e) {
+                warnings.add("Skipped non-numeric: " + rawNo);
+                continue;
+            }
 
-                // Clear existing entries for this ctype+status once per slot group
+            String ctype  = row.get("ctype");
+            String status = row.get("status").toUpperCase();
+
+            // Upsert: delete slot once per ctype+status, not once per row
                 String slotKey = partyName + "|" + row.get("date") + "|" + ctype + "|" + status;
-                if (!deletedSlots.contains(slotKey)) {
-                    cylinderRepo.deleteByPartyDateCtypeAndFullType(partyName, date, ctype, status.toUpperCase());
-                    deletedSlots.add(slotKey);
+            if (deletedSlots.add(slotKey)) {
+                cylinderRepo.deleteByPartyDateCtypeAndFullType(partyName, date, ctype, status);
                 }
 
-                // Duplicate within this batch
-                if (seenInBatch.contains(cylinderNo)) {
+            // Skip duplicates within this batch
+            if (!seenInBatch.add(cylinderNo)) {
                     warnings.add("Duplicate in batch — cylinder " + cylinderNo + " skipped.");
                     continue;
                 }
-                seenInBatch.add(cylinderNo);
 
-                // Warn if FULL and last status was also FULL
-                if ("FULL".equalsIgnoreCase(status)) {
+            // Warn if FULL and last recorded status was also FULL
+            if ("FULL".equals(status)) {
                     String lastStatus = cylinderRepo.getCylinderStatus(cylinderNo);
                     if ("FULL".equalsIgnoreCase(lastStatus)) {
-                        List<Long> empties = entryService.getCylindersFullAtParty(partyName, ctype);
+                    List<Long> empties = fullAtPartyCache.computeIfAbsent(ctype,
+                        t -> entryService.getCylindersFullAtParty(partyName, t));
                         warnings.add("DUPLICATE_FULL:" + cylinderNo + ":" +
                                      String.join(",", empties.stream().map(String::valueOf).toList()));
                     }
                 }
 
                 // Warn if EMPTY and cylinder was last held by a different party
-                if ("EMPTY".equalsIgnoreCase(status)) {
+            if ("EMPTY".equals(status)) {
                     String lastCustomer = cylinderRepo.getCylinderHoldingStatus(cylinderNo);
                     if (lastCustomer != null && !lastCustomer.equalsIgnoreCase(partyName)) {
                         warnings.add("PARTY_MISMATCH:" + cylinderNo + ":" + lastCustomer + ":" + partyName);
@@ -420,18 +441,12 @@ public class MainController {
                 ce.setCtype(ctype);
                 ce.setFullType(status);   // FULL or EMPTY — persisted separately from gas type
                 ce.setDate(date);
-                cylinderRepo.saveAndFlush(ce);
-                saved++;
-            } catch (Exception ex) {
-                warnings.add("Error saving row: " + ex.getMessage());
-                log.error("Cylinder save error", ex);
-            }
+            toSave.add(ce);
         }
 
-        Map<String, Object> resp = new HashMap<>();
-        resp.put("saved",    saved);
-        resp.put("warnings", warnings);
-        return resp;
+        // Single batch insert — one DB round-trip instead of N
+        cylinderRepo.saveAll(toSave);
+        return Map.of("saved", toSave.size(), "warnings", warnings);
     }
 
     // ── View History — Holding View ───────────────────────────────────────────
