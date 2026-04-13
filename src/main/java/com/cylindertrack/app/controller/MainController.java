@@ -21,6 +21,7 @@ import org.supercsv.cellprocessor.ift.CellProcessor;
 import org.supercsv.io.CsvBeanWriter;
 import org.supercsv.io.ICsvBeanWriter;
 import org.supercsv.prefs.CsvPreference;
+import jakarta.transaction.Transactional;
 
 import java.io.IOException;
 import java.text.SimpleDateFormat;
