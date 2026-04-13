@@ -17,6 +17,7 @@ input,select{padding:10px 12px;border:1px solid #ccc;border-radius:4px;font-size
 .btn-green{background:#04AA6D;color:white;}.btn-green:hover{background:#038a57;}
 .btn-blue{background:#1a73e8;color:white;}.btn-blue:hover{background:#1557b0;}
 .btn-outline{background:white;border:1px solid #04AA6D;color:#04AA6D;margin-left:8px;}.btn-outline:hover{background:#e8f5e9;}
+.btn:disabled{background:#aaa !important;cursor:not-allowed;border-color:#aaa;}
 .msg-error{background:#f8d7da;color:#721c24;padding:12px;border-radius:4px;margin-bottom:12px;}
 .hint{font-size:12px;color:#888;margin-top:3px;}
 .section-lbl{font-size:12px;font-weight:bold;color:#04AA6D;text-transform:uppercase;letter-spacing:.5px;margin-top:20px;padding-top:14px;border-top:1px solid #eee;}
@@ -51,13 +52,14 @@ input,select{padding:10px 12px;border:1px solid #ccc;border-radius:4px;font-size
                 <input type="date" id="sharedTo"/>
             </div>
         </div>
-        <p class="hint">Leave dates as a full month range for monthly billing, or set any custom range.</p>
+        <p class="hint">Leave as a full month for monthly billing, or set any custom range.</p>
     </div>
 
     <!-- Single party -->
     <div class="card">
         <div class="card-title">Single Party Bill</div>
-        <form id="singleForm" th:action="@{/billing/generate}" method="post">
+        <form id="singleForm" th:action="@{/billing/generate}" method="post"
+              target="dlFrame" onsubmit="startDownload('singleBtn','singleForm')">
             <input type="hidden" name="fromDate" id="sf"/>
             <input type="hidden" name="toDate"   id="st"/>
             <input type="hidden" name="discount" id="sd"/>
@@ -94,7 +96,8 @@ input,select{padding:10px 12px;border:1px solid #ccc;border-radius:4px;font-size
             </div>
             <div class="btn-row">
                 <button type="button" class="btn btn-outline" onclick="previewBill()">&#128065; Preview</button>
-                <button type="submit" class="btn btn-green" onclick="syncSingle()">&#8659; Download Bill</button>
+                <button type="submit" id="singleBtn" class="btn btn-green"
+                        onclick="syncSingle()">&#8659; Download Bill</button>
             </div>
         </form>
     </div>
@@ -103,18 +106,25 @@ input,select{padding:10px 12px;border:1px solid #ccc;border-radius:4px;font-size
     <div class="card">
         <div class="card-title">All Parties — Bulk Bill</div>
         <p class="hint" style="margin-bottom:12px">Generates one Excel with every party active in the date range. Each party gets its own sheet. No per-party adjustments applied.</p>
-        <form id="allForm" th:action="@{/billing/generate-all}" method="post">
+        <form id="allForm" th:action="@{/billing/generate-all}" method="post"
+              target="dlFrame" onsubmit="startDownload('allBtn','allForm')">
             <input type="hidden" name="fromDate" id="af"/>
             <input type="hidden" name="toDate"   id="at"/>
             <div class="btn-row">
-                <button type="submit" class="btn btn-blue" onclick="syncAll()">&#8659; Download All Bills (.xlsx)</button>
+                <button type="submit" id="allBtn" class="btn btn-blue"
+                        onclick="syncAll()">&#8659; Download All Bills (.xlsx)</button>
             </div>
         </form>
     </div>
 </div>
+
+<!-- Hidden iframe receives the file download — lets us detect completion to re-enable buttons -->
+<iframe id="dlFrame" name="dlFrame" style="display:none"></iframe>
+
 <script>
 function getFrom(){ return document.getElementById('sharedFrom').value; }
 function getTo()  { return document.getElementById('sharedTo').value; }
+
 function syncSingle(){
     document.getElementById('sf').value  = getFrom();
     document.getElementById('st').value  = getTo();
@@ -126,28 +136,40 @@ function syncAll(){
     document.getElementById('af').value = getFrom();
     document.getElementById('at').value = getTo();
 }
+
+function startDownload(btnId, formId) {
+    const btn = document.getElementById(btnId);
+    const from = getFrom(), to = getTo();
+    if (!from || !to) { alert('Set a date range first.'); return false; }
+
+    // Disable immediately — re-enable when iframe gets a response (file download or error)
+    btn.disabled = true;
+    btn.dataset.orig = btn.textContent;
+    btn.textContent = 'Generating…';
+
+    const iframe = document.getElementById('dlFrame');
+    iframe.onload = () => {
+        // iframe loaded = server responded (either file or error page)
+        // Small delay so the download actually starts in the browser
+        setTimeout(() => {
+            btn.disabled = false;
+            btn.textContent = btn.dataset.orig;
+        }, 1500);
+    };
+
+    return true; // allow form submit
+}
+
 function previewBill(){
     const party = document.getElementById('singleParty').value;
-    const from  = getFrom(); const to = getTo();
-    if (!party||!from||!to){ alert('Select party and date range first.'); return; }
+    const from = getFrom(), to = getTo();
+    if (!party || !from || !to){ alert('Select party and date range first.'); return; }
     const d = document.getElementById('discountInput').value;
     const s = document.getElementById('securityInput').value;
     const t = document.getElementById('tcInput').value;
     window.open(`/billing/preview?partyName=${encodeURIComponent(party)}&fromDate=${from}&toDate=${to}&discount=${d}&security=${s}&tc=${t}`, '_blank');
 }
-/*function validateAndLoad() {
-    const input = document.getElementById('singleParty');
-    const datalist = document.getElementById('partyDatalist');
-    
-    // Convert datalist options into a simple array
-    const validOptions = Array.from(datalist.options).map(opt => opt.value);
 
-    if (input.value && !validOptions.includes(input.value)) {
-        alert("Please select a valid party from the list.");
-        input.value = ""; // Clear invalid text
-        return;
-    }
-}*/
 // Default to current month
 const now = new Date();
 const y = now.getFullYear(), m = String(now.getMonth()+1).padStart(2,'0');
@@ -155,4 +177,5 @@ const days = new Date(y, now.getMonth()+1, 0).getDate();
 document.getElementById('sharedFrom').value = `${y}-${m}-01`;
 document.getElementById('sharedTo').value   = `${y}-${m}-${String(days).padStart(2,'0')}`;
 </script>
-</body></html>
+</body>
+</html>

@@ -29,7 +29,7 @@ public class ExcelBillGenerator {
         for (BillSummary bill : bills) {
             boolean hasUom = bill.getPartyUom() != null && !bill.getPartyUom().isBlank();
 
-            String raw = sanitize(bill.getPartyName()) + " " + bill.getInvoiceNumber().replace("/","-");
+            String raw = sanitize(bill.getPartyAccount() != null ? bill.getPartyAccount().getEffectiveBillingName() : bill.getPartyName()) + " " + bill.getInvoiceNumber().replace("/","-");
             XSSFSheet ws = wb.createSheet(raw.length()>31 ? raw.substring(0,31) : raw);
 
             // Column widths — shift right if UOM column present
@@ -70,7 +70,7 @@ public class ExcelBillGenerator {
             cell(row10, hasUom?6:5, "INVOICE NO: "+bill.getInvoiceNumber(), bold, HorizontalAlignment.LEFT);
 
             Row row11 = ws.createRow(r++);
-            cell(row11, 0, bill.getPartyName(), bold, HorizontalAlignment.LEFT);
+            cell(row11, 0, bill.getPartyAccount() != null ? bill.getPartyAccount().getEffectiveBillingName() : bill.getPartyName(), bold, HorizontalAlignment.LEFT);
             cell(row11, hasUom?6:5, "INVOICE DATE: "+DATE_FMT.format(bill.getInvoiceDate()), normal, HorizontalAlignment.LEFT);
 
             PartyAccount pa = bill.getPartyAccount();

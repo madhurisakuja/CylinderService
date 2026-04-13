@@ -31,7 +31,6 @@
         .addr-cell{white-space:pre-line;max-width:200px;}
         .link{color:#04AA6D;text-decoration:none;font-weight:bold;}
         .link:hover{text-decoration:underline;}
-        .divider{border:none;border-top:1px solid #eee;margin:20px 0;}
     </style>
     <script th:inline="javascript">
         // State code map injected from server
@@ -105,6 +104,13 @@
                 <option th:each="p : ${partyNames}" th:value="${p}" th:text="${p}"></option>
             </select>
 
+            <label>Billing Name
+                <span style="font-weight:normal;color:#999"> — name printed on the bill</span>
+            </label>
+            <input type="text" th:field="*{billingName}"
+                   placeholder="Leave blank to use the Party Name above"/>
+            <p class="hint">e.g. if party is "SHARMA GAS" but bill should say "M/S SHARMA GAS AGENCY", enter that here.</p>
+
             <label>Address Line 1</label>
             <input type="text" th:field="*{addressLine1}" placeholder="e.g. PALSANIA HOUSE, GWALA BASTI"/>
 
@@ -140,6 +146,7 @@
             <thead>
                 <tr>
                     <th>Party</th>
+                    <th>Billing Name</th>
                     <th>GSTIN &amp; State</th>
                     <th>Phone</th>
                     <th>Address</th>
@@ -151,6 +158,7 @@
                         <a th:href="@{/billing/party-accounts(party=${a.partyName})}"
                            th:text="${a.partyName}" class="link"></a>
                     </td>
+                    <td th:text="${a.billingName != null and !#strings.isEmpty(a.billingName) ? a.billingName : '—'}"></td>
                     <td>
                         <div th:if="${a.gstin}" th:text="${a.gstin}"></div>
                         <div th:if="${a.stateCode}"

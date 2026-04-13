@@ -29,145 +29,38 @@ select,input[type=date],input[type=number]{padding:10px 12px;border:1px solid #c
     <a th:href="@{/newPartyEntryF}">Parties</a>
     <a th:href="@{/billing/generate}">Billing</a>
 </div>
+
 <div class="content">
     <h2>Delete Entry</h2>
 
     <div th:if="${deleteSuccess}" class="msg-success" th:text="${deleteSuccess}"></div>
-    <div th:if="${deleteError}"   class="msg-error"   th:text="${deleteError}"></div>
+    <div th:if="${deleteError}" class="msg-error" th:text="${deleteError}"></div>
 
     <div class="card">
-        <form id="delForm" th:action="@{/deleteEntryF}" method="post"
-              onsubmit="return confirmDelete()">
+        <form id="delForm" th:action="@{/deleteEntryF}" th:object="${entry}" method="post">
            
             <label>Party Name</label>
-<!--input type="text" 
-       id="partyInput" 
-       list="partyList" name="partyName"
-       placeholder="Type or select party..." 
-       required
-       autocomplete="off"
-       oninput="loadCylinders()" />
+            <select th:field="*{partyName}" required>
+                <option value="">-- Select Party --</option>
+                <option th:each="p : ${partyNames}" th:value="${p}" th:text="${p}"></option>
+            </select>
 
-<datalist id="partyList">
-    <option th:each="p : ${partyNames}" th:value="${p}"></option>
-</datalist-->
-<select name="partyName" required id="partyInput">
-    <option value="">-- Select Party --</option>
-    <option th:each="p : ${partyNames}" th:value="${p}" th:text="${p}"></option>
-</select>
             <label>Date</label>
-            <input type="date" name="date" id="dateInput" required
-                   onchange="onDateChange()"/>
+            <input type="date" th:field="*{date}" required />
 
-                <label>Delete Scope</label>
-            <select id="scopeSelect" name="scope" onchange="onScopeChange()">
-                    <option value="all">Delete ALL entries for this party + date</option>
-                    <option value="cylinder">Delete a specific cylinder entry only</option>
-                </select>
+            <input type="hidden" name="_scope" value="all" />
 
-            <!-- Cylinder section — shown only when scope = cylinder -->
-            <div class="cyl-section" id="cylSection">
-                    <label>Cylinder Number</label>
-                    <select name="cylinderNo" id="cylSelect">
-                    <option value="">-- Select party + date first --</option>
-                    </select>
-                <div class="loading" id="cylLoading">Loading cylinders…</div>
-                </div>
-
-            <div class="warn-box" id="warnBox">
-                This action cannot be undone. Deleting all entries removes both
-                main entries and cylinder number records.
+            <div class="warn">
+                <strong>Warning:</strong> This action cannot be undone. 
+                Submitting will delete <strong>ALL</strong> entries (Main and Cylinder) for this party on the selected date.
             </div>
 
-            <button type="submit" class="btn btn-red" id="deleteBtn">Delete</button>
+            <button type="submit" class="btn btn-red" 
+                    onclick="return confirm('Are you absolutely sure? This will delete all records for this party and date.')">
+                Delete All Entries
+            </button>
         </form>
     </div>
 </div>
-
-<script>
-let debounceTimer = null;
-
-// Trigger load when party is selected from datalist (not every keystroke)
-document.getElementById('partyInput').addEventListener('change', scheduleLoad);
-document.getElementById('partyInput').addEventListener('input', () => {
-    // Only load when input exactly matches a known party name
-    clearTimeout(debounceTimer);
-    debounceTimer = setTimeout(() => {
-        const val = document.getElementById('partyInput').value.trim();
-        const opts = Array.from(document.querySelectorAll('#partyList option')).map(o => o.value);
-        if (opts.includes(val)) loadCylinders();
-    }, 400);
-});
-
-function onDateChange() {
-    loadCylinders();
-}
-
-function scheduleLoad() {
-    clearTimeout(debounceTimer);
-    debounceTimer = setTimeout(loadCylinders, 100);
-}
-
-async function loadCylinders() {
-    const party = document.getElementById('partyInput').value.trim();
-    const date  = document.getElementById('dateInput').value;
-    if (!party || !date) return;
-
-    const loading = document.getElementById('cylLoading');
-    const sel     = document.getElementById('cylSelect');
-    loading.style.display = 'block';
-    sel.innerHTML = '<option value="">Loading…</option>';
-
-    try {
-        const resp = await fetch(
-            `/deleteEntryF/cylinders?partyName=${encodeURIComponent(party)}&date=${date}`
-        );
-    const cyls = await resp.json();
-        if (cyls.length === 0) {
-            sel.innerHTML = '<option value="">-- No cylinder entries found --</option>';
-        } else {
-    sel.innerHTML = '<option value="">-- Select cylinder --</option>' +
-        cyls.map(c => `<option value="${c}">${c}</option>`).join('');
-        }
-    } catch(e) {
-        sel.innerHTML = '<option value="">-- Error loading --</option>';
-    } finally {
-        loading.style.display = 'none';
-    }
-}
-
-function onScopeChange() {
-    const scope   = document.getElementById('scopeSelect').value;
-    const cylSec  = document.getElementById('cylSection');
-    const warnBox = document.getElementById('warnBox');
-
-    if (scope === 'cylinder') {
-        cylSec.style.display = 'block';
-        warnBox.textContent  = 'This will delete only the selected cylinder entry. Main entry counts are not changed.';
-        // Load cylinders immediately if party+date already filled
-        loadCylinders();
-    } else {
-        cylSec.style.display = 'none';
-        warnBox.textContent  = 'This action cannot be undone. Deleting all entries removes both main entries and cylinder number records.';
-    }
-}
-
-function confirmDelete() {
-    const scope    = document.getElementById('scopeSelect').value;
-    const party    = document.getElementById('partyInput').value.trim();
-    const date     = document.getElementById('dateInput').value;
-    const cylNo    = document.getElementById('cylSelect').value;
-
-    if (scope === 'cylinder' && !cylNo) {
-        alert('Please select a cylinder number, or switch scope to "Delete ALL".');
-        return false;
-    }
-
-    const msg = scope === 'cylinder'
-        ? `Delete cylinder ${cylNo} entry for ${party} on ${date}?`
-        : `Delete ALL entries for ${party} on ${date}? This cannot be undone.`;
-    return confirm(msg);
-}
-</script>
 </body>
 </html>

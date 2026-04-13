@@ -220,7 +220,7 @@ public class MainController {
     }
 
     // ── Delete Entry ──────────────────────────────────────────────────────────
-
+/*
     @GetMapping("/deleteEntryF")
     public String deleteEntryGet(Model model, HttpServletRequest request) {
         Map<String, ?> flash = RequestContextUtils.getInputFlashMap(request);
@@ -239,7 +239,7 @@ public class MainController {
     }
 
     /** AJAX: load cylinder numbers for a party+date so the delete page can show a dropdown */
-    @GetMapping("/deleteEntryF/cylinders")
+   /* @GetMapping("/deleteEntryF/cylinders")
     @ResponseBody
     public List<Long> getCylindersForDelete(
             @RequestParam String partyName,
@@ -275,7 +275,56 @@ public class MainController {
         }
         return new RedirectView("/deleteEntryF", true);
     }
+*/
 
+@GetMapping("/deleteEntryF")
+public String deleteEntryGet(Model model, HttpServletRequest request) {
+    Map<String, ?> flash = RequestContextUtils.getInputFlashMap(request);
+    if (flash != null) {
+        model.addAttribute("deleteSuccess", flash.get("deleteSuccess"));
+    }
+
+    // Set default date to latest entry to save user time
+    Date defDate = mainEntryRepo.getLatestEntryDate();
+    MainEntry entry = new MainEntry();
+    if (defDate != null) entry.setDate(defDate);
+
+    // Combine party names for the dropdown
+    List<String> allParties = new ArrayList<>(partyNamesRepo.getAllPartyNamesPurchaser());
+    allParties.addAll(partyNamesRepo.getAllPartyNames());
+    
+    model.addAttribute("partyNames", allParties);
+    model.addAttribute("entry", entry);
+    return "deleteEntryF";
+}
+
+// NOTE: AJAX getCylindersForDelete method has been removed as it is no longer needed
+
+@PostMapping("/deleteEntryF")
+@Transactional // Highly recommended to ensure both deletes succeed or both fail
+public RedirectView deleteEntryPost(
+        @RequestParam String partyName,
+        @RequestParam @DateTimeFormat(pattern = "yyyy-MM-dd") Date date,
+        RedirectAttributes ra) {
+
+    try {
+        // Since the UI only supports 'Delete All', we proceed directly to full deletion
+        // Delete from MainEntry and Cylinder tables
+        mainEntryRepo.deleteByPartyAndDate(partyName, date);
+        cylinderRepo.deleteByPartyAndDate(partyName, date);
+
+        log.info("Deleted all entries for party={} date={}", partyName, date);
+        
+        String formattedDate = new java.text.SimpleDateFormat("dd-MM-yyyy").format(date);
+        ra.addFlashAttribute("deleteSuccess", "All entries for " + partyName + " on " + formattedDate + " have been deleted.");
+
+    } catch (Exception e) {
+        log.error("Failed to delete entries for party={} date={}", partyName, date, e);
+        ra.addFlashAttribute("deleteError", "Error deleting records: " + e.getMessage());
+    }
+
+    return new RedirectView("/deleteEntryF", true);
+}
     // ── Cylinder Numbers Tab ──────────────────────────────────────────────────
 
     @GetMapping("/cylinderNumbers")

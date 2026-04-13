@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html xmlns:th="http://www.thymeleaf.org" lang="en">
 <head>
-    <title>History — Detail View</title>
+    <title>Daily Report</title>
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <style>
         body{margin:0;font-family:Arial,Helvetica,sans-serif;background:#f4f4f4;}
@@ -53,95 +53,69 @@
     </h2>
     <div class="tab-row">
         <a class="tab" th:href="@{/historyHolding}">Holding View</a>
-        <a class="tab active" th:href="@{/historyDetail}">Detail View</a>
-        <a class="tab" th:href="@{/historyDaily}">Daily Report</a>
+        <a class="tab" th:href="@{/historyDetail}">Detail View</a>
+        <a class="tab active" th:href="@{/historyDaily}">Daily Report</a>
     </div>
 
     <div class="filter-card">
-        <form th:action="@{/historyDetail}" method="get">
-            <div class="filter-grid">
+        <form th:action="@{/historyDaily}" method="get">
+            <div class="filter-row">
                 <div>
-                    <label>Party</label>
-                    <!--input list="partyList" name="partyName" th:value="${selectedParty}"
-                           placeholder="Type or select…" autocomplete="off"/>
-                    <datalist id="partyList">
-                        <option th:each="p : ${partyNames}" th:value="${p}"></option>
-                    </datalist-->
-                    <select name="partyName">
-                        <option value="">-- Select Party --</option>
-                        <option th:each="p : ${partyNames}" th:value="${p}" th:text="${p}"
-                                th:selected="${p == selectedParty}"></option>
-                    </select>
+                    <label>Report Date</label>
+                    <input type="date" name="date"
+                           th:value="${#dates.format(reportDate,'yyyy-MM-dd')}"/>
                 </div>
-                <div>
-                    <label>OR Cylinder Number</label>
-                    <input type="number" name="cylinderNo" th:value="${selectedCylinder}"
-                           placeholder="e.g. 1042" min="1"/>
-                </div>
-                <div>
-                    <label>From Date</label>
-                    <input type="date" name="fromDate" th:value="${fromDate}"/>
-                </div>
-                <div>
-                    <label>To Date</label>
-                    <input type="date" name="toDate" th:value="${toDate}"/>
-                </div>
-                <div style="display:flex;gap:8px">
-                    <button type="submit" class="btn">Search</button>
-                    <a th:href="@{/historyDetail}" class="btn btn-ghost" style="text-decoration:none;padding:10px 14px">Clear</a>
-                </div>
+                <button type="submit" class="btn">Load</button>
             </div>
         </form>
     </div>
 
-    <!-- Results -->
-    <div th:if="${history != null and !#lists.isEmpty(history)}">
-        <p class="meta">
-            <th:block th:if="${viewMode == 'party'}">
-                Cylinder movements for <strong th:text="${selectedParty}"></strong>
-                <a th:href="@{/exportF(partyName=${selectedParty})}" class="export-link">Export CSV</a>
-            </th:block>
-            <th:block th:if="${viewMode == 'cylinder'}">
-                History for cylinder <strong th:text="${selectedCylinder}"></strong>
-            </th:block>
-            <th:block th:if="${fromDate != null and !#strings.isEmpty(fromDate)}">
-                &nbsp;·&nbsp; <span th:text="${fromDate}"></span> → <span th:text="${toDate}"></span>
-            </th:block>
-        </p>
+    <div class="summary" th:if="${entries != null and !#lists.isEmpty(entries)}">
+        <span>Entries created on: <strong th:text="${#dates.format(reportDate,'dd-MM-yyyy')}"></strong></span>
+        <span>Count: <strong th:text="${#lists.size(entries)}"></strong></span>
+        <span>Parties: <strong th:text="${#sets.size(#sets.toSet(entries.![partyName]))}"></strong></span>
+    </div>
+
+    <div th:if="${entries != null and !#lists.isEmpty(entries)}">
         <table>
             <thead>
                 <tr>
-                    <th>Date</th>
-                    <th>Cylinder No</th>
+                    <th>Created At</th>
+                    <th>Entry Date</th>
+                    <th>Party</th>
+                    <th>Type</th>
                     <th>Gas Type</th>
-                    <th>Status</th>
-                    <th>Customer</th>
+                    <th style="text-align:right">Full</th>
+                    <th style="text-align:right">Empty</th>
+                    <th style="text-align:right">Holding</th>
+                    <th>Remarks</th>
                 </tr>
             </thead>
             <tbody>
-                <!-- party view returns: date[0], ctype[1], fullType[2], customerName[3], cylinderNo[4] -->
-                <!-- cylinder view returns: date[0], ctype[1], fullType[2], customerName[3] -->
-                <tr th:each="row : ${history}">
-                    <td th:text="${#dates.format(row.get(0),'dd-MM-yyyy')}"></td>
-                    <td th:if="${viewMode == 'party'}"    th:text="${row.get(4)}"></td>
-                    <td th:if="${viewMode == 'cylinder'}" th:text="${selectedCylinder}"></td>
-                    <td th:text="${row.get(1)}"></td>
+                <tr th:each="e : ${entries}">
+                    <td th:text="${#dates.format(e.createdAt,'HH:mm')}"></td>
+                    <td th:text="${#dates.format(e.date,'dd-MM-yyyy')}"></td>
+                    <td th:text="${e.partyName}"></td>
                     <td>
-                        <span th:text="${row.get(2)}"
-                              th:class="${row.get(2) == 'FULL' ? 'badge badge-full' : 'badge badge-empty'}">
-                        </span>
+                        <span th:if="${e.isPurchase}"  class="badge-purchase">Purchase</span>
+                        <span th:if="${!e.isPurchase}" class="badge-sales">Sales</span>
                     </td>
-                    <td th:text="${row.get(3)}"></td>
+                    <td th:text="${e.ctype}"></td>
+                    <td style="text-align:right" th:text="${e.cfull}"></td>
+                    <td style="text-align:right" th:text="${e.cempty}"></td>
+                    <td style="text-align:right" th:text="${e.cholding}"></td>
+                    <td th:text="${e.remarks}"></td>
                 </tr>
             </tbody>
         </table>
+        <p class="note">Created At = time the entry was saved in the system. Entry Date = the date entered for the transaction.</p>
     </div>
-
-    <div class="hint" th:if="${history == null and inRotationResult == null}">
-        Select a party or cylinder number above to search.
-    </div>
-    <div class="hint" th:if="${history != null and #lists.isEmpty(history)}">
-        No records found for the selected filters.
+    <div class="empty-state" th:if="${entries == null or #lists.isEmpty(entries)}">
+        No entries recorded on <strong th:text="${#dates.format(reportDate,'dd-MM-yyyy')}"></strong>.
+        <br/><small style="color:#bbb;display:block;margin-top:8px">
+            Daily report shows entries by when they were <em>created</em> in the system.
+            Only entries made after the <em>created_at</em> column was added will appear here.
+        </small>
     </div>
 
     <!-- Not-in-rotation result -->
