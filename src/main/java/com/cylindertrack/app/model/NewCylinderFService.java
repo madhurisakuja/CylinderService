@@ -25,6 +25,10 @@ public interface NewCylinderFService extends JpaRepository<MainCylinderEntry, Lo
            "where c.cylinderNo=?1 order by c.date desc")
     List<List<?>> findAllByCylinderNo(Long cylinderNo);
 
+@Query("select c.date, c.ctype, c.fullType, c.customerName from MainCylinderEntry c " +
+           "where c.customerName=?1 and c.cylinderNo=?2 order by c.date desc")
+    List<List<?>> findAllByPartyCylinder(String partyName, Long cylinderNo);
+    
     /** Cylinder history by number + date range, date DESC */
     @Query("select c.date, c.ctype, c.fullType, c.customerName from MainCylinderEntry c " +
            "where c.cylinderNo=?1 " +
@@ -58,6 +62,11 @@ public interface NewCylinderFService extends JpaRepository<MainCylinderEntry, Lo
            "  and DATE(c.date)>=DATE(?2) and DATE(c.date)<=DATE(?3) order by c.date desc")
     List<List<?>> findAllByPartyAndDateRange(String partyName, Date fromDate, Date toDate);
 
+      @Query("select c.date, c.ctype, c.fullType, c.customerName, c.cylinderNo from MainCylinderEntry c " +
+           "where c.customerName=?1 and c.cylinderNo=?2 " +
+           "  and DATE(c.date)>=DATE(?3) and DATE(c.date)<=DATE(?4) order by c.date desc")
+    List<List<?>> findAllByPartyCylinderAndDateRange(String partyName, Long cylinderNo, Date fromDate, Date toDate);
+/*
     /** FULL cylinders for billing */
     @Query("select c.cylinderNo from MainCylinderEntry c " +
            "where c.customerName=?1 and c.ctype=?2 and c.fullType='FULL' " +

@@ -88,13 +88,24 @@ public class BillingService {
         int fiscalStart = (month >= 4) ? year : year - 1;
 
         String partyUom = partyNamesRepository.findUomByPartyName(partyName);
-        // Build one blank line per gas type that has a label defined
+
+        // Batch-fetch all HSN codes and labels in 2 queries instead of 7+7
+        Map<String, String> hsnMap = new HashMap<>();
+        hsnCodeRepository.findAll().forEach(h -> hsnMap.put(h.getGasType(), h.getHsnCode() != null ? h.getHsnCode() : ""));
+        Map<String, String> defaultLabelMap = new HashMap<>();
+        labelRepository.findAllDefaults().forEach(l -> defaultLabelMap.put(l.getGasType(), l.getLabel()));
+        Map<String, String> partyLabelMap = new HashMap<>();
+        labelRepository.findAllOverrides().stream()
+            .filter(l -> partyName.equals(l.getPartyName()))
+            .forEach(l -> partyLabelMap.put(l.getGasType(), l.getLabel()));
+
         List<BillLineItem> lineItems = new ArrayList<>();
         int sl = 1;
         for (CylinderTypeF t : CylinderTypeF.values()) {
-            String label = resolveLabel(partyName, t.name());
-            String hsn   = hsnCodeRepository.findByGasType(t.name()).map(HsnCode::getHsnCode).orElse("");
-            // 0 qty, 0 rate — template row
+            String gasType = t.name();
+            String label = partyLabelMap.getOrDefault(gasType,
+                           defaultLabelMap.getOrDefault(gasType, gasType));
+            String hsn   = hsnMap.getOrDefault(gasType, "");
             lineItems.add(new BillLineItem(sl++, label, hsn, partyUom, 0, BigDecimal.ZERO));
         }
 

@@ -170,12 +170,32 @@ function previewBill(){
     window.open(`/billing/preview?partyName=${encodeURIComponent(party)}&fromDate=${from}&toDate=${to}&discount=${d}&security=${s}&tc=${t}`, '_blank');
 }
 
-// Default to current month
-const now = new Date();
-const y = now.getFullYear(), m = String(now.getMonth()+1).padStart(2,'0');
-const days = new Date(y, now.getMonth()+1, 0).getDate();
-document.getElementById('sharedFrom').value = `${y}-${m}-01`;
-document.getElementById('sharedTo').value   = `${y}-${m}-${String(days).padStart(2,'0')}`;
+// Default to previous month; restore last-used values from localStorage
+(function() {
+    const now   = new Date();
+    const prev  = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+    const py    = prev.getFullYear();
+    const pm    = String(prev.getMonth() + 1).padStart(2, '0');
+    const pdays = new Date(py, prev.getMonth() + 1, 0).getDate();
+    const defFrom = `${py}-${pm}-01`;
+    const defTo   = `${py}-${pm}-${String(pdays).padStart(2, '0')}`;
+
+    // Restore last-used dates, or fall back to prev month
+    const savedFrom  = localStorage.getItem('bill_fromDate');
+    const savedTo    = localStorage.getItem('bill_toDate');
+    const savedParty = localStorage.getItem('bill_party');
+    document.getElementById('sharedFrom').value = savedFrom  || defFrom;
+    document.getElementById('sharedTo').value   = savedTo    || defTo;
+    if (savedParty) document.getElementById('singleParty').value = savedParty;
+
+    // Persist on change
+    document.getElementById('sharedFrom').addEventListener('change', () =>
+        localStorage.setItem('bill_fromDate', document.getElementById('sharedFrom').value));
+    document.getElementById('sharedTo').addEventListener('change', () =>
+        localStorage.setItem('bill_toDate', document.getElementById('sharedTo').value));
+    document.getElementById('singleParty').addEventListener('change', () =>
+        localStorage.setItem('bill_party', document.getElementById('singleParty').value));
+})();
 </script>
 </body>
 </html>

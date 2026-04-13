@@ -557,6 +557,12 @@ public RedirectView deleteEntryPost(
             model.addAttribute("issueReadingData", flash.get("issueReadingData"));
             model.addAttribute("inRotationResult", flash.get("inRotationResult"));
             model.addAttribute("offsetDate",       flash.get("offsetDate"));
+        } else if (partyName != null && !partyName.isBlank() && cylinderNo != null) {
+            // Both given — show cylinder history, label shows both
+            model.addAttribute("history", hasRange
+                ? cylinderRepo.findAllByPartyCylinderAndDateRange(partyName, cylinderNo, fromDate, toDate)
+                : cylinderRepo.findAllByPartyCylinder(partyName,cylinderNo));
+            model.addAttribute("viewMode", "both");
         } else if (partyName != null && !partyName.isBlank()) {
             model.addAttribute("history", hasRange
                 ? cylinderRepo.findAllByPartyAndDateRange(partyName, fromDate, toDate)
