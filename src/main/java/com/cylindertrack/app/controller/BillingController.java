@@ -269,8 +269,6 @@ public class BillingController {
             HttpServletResponse response) throws IOException {
 
         BillSummary template = billingService.buildCustomTemplate(partyName);
-        // Roll back counter — custom template doesn't consume an invoice number
-        //invoiceCounterRepository.decrement();
         byte[] xlsx = excelGenerator.generate(List.of(template));
         writeExcel(response, xlsx, "TEMPLATE_" + sanitize(partyName) + ".xlsx");
     }

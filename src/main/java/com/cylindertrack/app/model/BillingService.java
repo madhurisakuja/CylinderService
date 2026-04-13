@@ -98,10 +98,26 @@ public class BillingService {
             lineItems.add(new BillLineItem(sl++, label, hsn, partyUom, 0, BigDecimal.ZERO));
         }
 
-        String fiscalYear    = fiscalStart + "-" + String.valueOf(fiscalStart+1).substring(2);
-        String invoiceNumber = "DRAFT/" + fiscalYear;
+        // Use real invoice counter — same as a regular bill
+        InvoiceCounter counter = invoiceCounterRepository.findById(1)
+            .orElseGet(() -> {
+                InvoiceCounter c = new InvoiceCounter();
+                c.setFiscalStartYear(fiscalStart);
+                return invoiceCounterRepository.save(c);
+            });
+        if (!counter.getFiscalStartYear().equals(fiscalStart)) {
+            invoiceCounterRepository.resetForNewFiscalYear(fiscalStart);
+            counter.setCurrentNumber(1);
+            counter.setFiscalStartYear(fiscalStart);
+        }
+        int invoiceNum = counter.getCurrentNumber();
+        invoiceCounterRepository.increment();
+
+        String fiscalYear    = fiscalStart + "-" + String.valueOf(fiscalStart + 1).substring(2);
+        String invoiceNumber = String.format("%02d", invoiceNum) + "/" + fiscalYear;
 
         PartyAccount account = resolveAccount(partyName);
+        log.info("Custom template: invoice={} party={}", invoiceNumber, partyName);
         return new BillSummary(partyName, account, partyUom, invoiceDate, invoiceNumber,
                                fiscalYear, lineItems, BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO);
     }
