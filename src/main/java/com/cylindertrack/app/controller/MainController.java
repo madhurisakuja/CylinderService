@@ -525,10 +525,27 @@ public RedirectView deleteEntryPost(
             }
             model.addAttribute("byType", byType);
         } else {
+            /* Default load limited to last 6 months MADHURI
+               LocalDate today = LocalDate.now();
+               LocalDate fromDateRef = today.minusMonths(6);
+               Date fromDateDef = Date.from(fromDateRef.atStartOfDay(ZoneId.systemDefault()).toInstant());
+               Date toDateDef = Date.from(today.atStartOfDay(ZoneId.systemDefault()).toInstant());
+               
             model.addAttribute("holdingSummary", hasRange
                 ? mainEntryRepo.getCurrentHoldingSummaryForRange(fromDate, toDate)
-                : mainEntryRepo.getCurrentHoldingSummary());
-        }
+                : mainEntryRepo.getCurrentHoldingSummary(fromDateDef, toDateDef));
+*/
+                LocalDate today = LocalDate.now();
+                LocalDate sixMonthsAgo = today.minusMonths(6);
+
+                // Converting to java.util.Date
+                Date toDateDef = java.sql.Date.valueOf(today);
+                Date fromDateDef = java.sql.Date.valueOf(sixMonthsAgo);
+
+                model.addAttribute("holdingSummary", hasRange
+                    ? mainEntryRepo.getCurrentHoldingSummaryForRange(fromDate, toDate)
+                    : mainEntryRepo.getCurrentHoldingSummary(fromDateDef, toDateDef));
+                }
         return "historyHolding";
     }
 

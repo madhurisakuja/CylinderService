@@ -10,6 +10,10 @@ import org.springframework.context.annotation.Bean;
 public class CylinderTrackerApplication {
 
     public static void main(String[] args) {
+        // Set JVM default timezone to IST before Spring context starts.
+        // This affects: LocalDate.now(), new Date(), Thymeleaf #dates.format(),
+        // Hibernate CreationTimestamp, and all ZoneId.systemDefault() calls.
+        TimeZone.setDefault(TimeZone.getTimeZone("Asia/Kolkata"));
         SpringApplication.run(CylinderTrackerApplication.class, args);
     }
 
