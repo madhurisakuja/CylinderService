@@ -25,7 +25,7 @@ public interface NewCylinderFService extends JpaRepository<MainCylinderEntry, Lo
            "where c.cylinderNo=?1 order by c.date desc")
     List<List<?>> findAllByCylinderNo(Long cylinderNo);
 
-@Query("select c.date, c.ctype, c.fullType, c.customerName from MainCylinderEntry c " +
+@Query("select c.date, c.ctype, c.fullType, c.customerName, c.cylinderNo from MainCylinderEntry c " +
            "where c.customerName=?1 and c.cylinderNo=?2 order by c.date desc")
     List<List<?>> findAllByPartyCylinder(String partyName, Long cylinderNo);
     
