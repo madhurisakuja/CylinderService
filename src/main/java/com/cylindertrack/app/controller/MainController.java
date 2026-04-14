@@ -26,6 +26,7 @@ import jakarta.transaction.Transactional;
 import java.io.IOException;
 import java.text.SimpleDateFormat;
 import java.time.LocalDate;
+import java.util.TimeZone;
 import java.time.ZoneId;
 import java.util.*;
 
@@ -544,7 +545,7 @@ public RedirectView deleteEntryPost(
 
                 model.addAttribute("holdingSummary", hasRange
                     ? mainEntryRepo.getCurrentHoldingSummaryForRange(fromDate, toDate)
-                    : mainEntryRepo.getCurrentHoldingSummary(fromDateDef, toDateDef));
+                    : mainEntryRepo.getCurrentHoldingSummaryForRange(fromDateDef, toDateDef));
                 }
         return "historyHolding";
     }
