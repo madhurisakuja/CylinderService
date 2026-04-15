@@ -86,7 +86,7 @@
             </thead>
             <tbody>
                 <tr th:each="e : ${saleentries}">
-                    <td th:text="${e.partyName}"></td>
+                    <td th:text="${e.partyName == null ? 'TOTAL' : e.partyName}"></td>
                     <td th:text="${e.OXY}"></td>
                     <td th:text="${e.CO2}"></td>
                     <td th:text="${e.LPG}"></td>

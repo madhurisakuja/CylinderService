@@ -90,7 +90,7 @@ public interface MainEntryRepository extends JpaRepository<MainEntry, Long> {
            "COALESCE(MAX(CASE WHEN e.ctype = 'NITROGEN' THEN e.cfull END), 0) AS NITROGEN " +
            "FROM main_entry e WHERE DATE(e.created_at) = DATE(?1) " +
            "AND (e.is_purchase = false OR e.is_purchase IS NULL) " +
-           "GROUP BY e.party_name WITH ROLLUP", nativeQuery = true)
+           "GROUP BY e.party_name WITH ROLLUP ORDER BY e.party_name ASC", nativeQuery = true)
     List<Map<String, Object>> findSaleEntriesByCreatedDate(Date date);
 
 }
