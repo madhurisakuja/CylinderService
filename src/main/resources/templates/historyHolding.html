@@ -62,7 +62,7 @@
                     <datalist id="partyList">
                         <option th:each="p : ${partyNames}" th:value="${p}"></option>
                     </datalist-->
-                    <select name="partyName">
+                    <select name="partyName" th:value="${selectedParty}">
                         <option value="">-- All Parties --</option>
                         <option th:each="p : ${partyNames}" th:value="${p}" th:text="${p}"
                                 th:selected="${p == selectedParty}"></option>

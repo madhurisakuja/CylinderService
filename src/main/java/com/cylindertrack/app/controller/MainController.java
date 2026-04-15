@@ -619,7 +619,7 @@ public RedirectView deleteEntryPost(
         Date reportDate = (date != null) ? date
             : Date.from(LocalDate.now(ZoneId.systemDefault()).atStartOfDay(ZoneId.systemDefault()).toInstant());
         model.addAttribute("reportDate", reportDate);
-        model.addAttribute("entries",    mainEntryRepo.findEntriesByCreatedDate(reportDate));
+        model.addAttribute("saleentries",    mainEntryRepo.findSaleEntriesByCreatedDate(reportDate));
         return "historyDaily";
     }
 

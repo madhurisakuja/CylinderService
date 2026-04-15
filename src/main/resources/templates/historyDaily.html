@@ -64,50 +64,46 @@
         </form>
     </div>
 
-    <!-- Summary totals when entries exist -->
-    <div class="summary" th:if="${entries != null and !#lists.isEmpty(entries)}">
+    <!-- Summary totals when saleentries exist -->
+    <div class="summary" th:if="${saleentries != null and !#lists.isEmpty(saleentries)}">
         <span>Date: <strong th:text="${#dates.format(reportDate,'dd-MM-yyyy')}"></strong></span>
-        <span>Total entries: <strong th:text="${#lists.size(entries)}"></strong></span>
-        <span>Parties: <strong th:text="${#sets.size(#sets.toSet(entries.![partyName]))}"></strong></span>
+        <span>Total sale entries: <strong th:text="${#lists.size(saleentries)}"></strong></span>
+        <span>Parties: <strong th:text="${#sets.size(#sets.toSet(saleentries.![partyName]))}"></strong></span>
     </div>
-
-    <div th:if="${entries != null and !#lists.isEmpty(entries)}">
+    <div th:if="${saleentries != null and !#lists.isEmpty(saleentries)}">
         <table>
             <thead>
                 <tr>
-                    <th>Time</th>
                     <th>Party</th>
-                    <th>Type</th>
-                    <th>Gas Type</th>
-                    <th>Full</th>
-                    <th>Empty</th>
-                    <th>Holding</th>
-                    <th>Remarks</th>
+                    <th>OXY</th>
+                    <th>CO2</th>
+                    <th>LPG</th>
+                    <th>DA</th>
+                    <th>ARGON</th>
+                    <th>ARGOSHIELD</th>
+                    <th>NITROGEN</th>
                 </tr>
             </thead>
             <tbody>
-                <tr th:each="e : ${entries}">
-                    <td th:text="${#dates.format(e.createdAt,'HH:mm')}"></td>
+                <tr th:each="e : ${saleentries}">
                     <td th:text="${e.partyName}"></td>
-                    <td>
-                        <span th:if="${e.isPurchase}"  class="badge-purchase">Purchase</span>
-                        <span th:if="${!e.isPurchase}" class="badge-sales">Sales</span>
-                    </td>
-                    <td th:text="${e.ctype}"></td>
-                    <td th:text="${e.cfull}"></td>
-                    <td th:text="${e.cempty}"></td>
-                    <td th:text="${e.cholding}"></td>
-                    <td th:text="${e.remarks}"></td>
+                    <td th:text="${e.OXY}"></td>
+                    <td th:text="${e.CO2}"></td>
+                    <td th:text="${e.LPG}"></td>
+                    <td th:text="${e.DA}"></td>
+                    <td th:text="${e.ARGON}"></td>
+                    <td th:text="${e.ARGOSHIELD}"></td>
+                    <td th:text="${e.NITROGEN}"></td>
                 </tr>
             </tbody>
         </table>
     </div>
 
-    <div class="empty-state" th:if="${entries == null or #lists.isEmpty(entries)}">
-        No entries recorded on <strong th:text="${#dates.format(reportDate,'dd-MM-yyyy')}"></strong>.
+    <div class="empty-state" th:if="${saleentries == null or #lists.isEmpty(saleentries)}">
+        No saleentries recorded on <strong th:text="${#dates.format(reportDate,'dd-MM-yyyy')}"></strong>.
         <br/><small style="color:#bbb;margin-top:6px;display:block">
             Note: Daily report shows entries by when they were created in the system (not the entry date).
-            Only entries made after the <em>created_at</em> column was added will appear here.
+            Only saleentries made after the <em>created_at</em> column was added will appear here.
         </small>
     </div>
 </div>

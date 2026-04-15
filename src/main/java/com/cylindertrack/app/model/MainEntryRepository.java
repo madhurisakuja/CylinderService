@@ -9,6 +9,7 @@ import jakarta.transaction.Transactional;
 
 import java.util.Date;
 import java.util.List;
+import java.util.Map;
 
 @Repository
 public interface MainEntryRepository extends JpaRepository<MainEntry, Long> {
@@ -66,7 +67,30 @@ public interface MainEntryRepository extends JpaRepository<MainEntry, Long> {
     void deleteByPartyAndDate(String partyName, Date date);
 
     List<MainEntry> findByPartyName(String partyName, Sort sort);
+/*
+    @Query("select e.party_name as partyName, "+
+    "COALESCE(MAX(CASE WHEN e.ctype = 'OXY' THEN e.cfull END), 0) AS OXY, "+
+    "COALESCE(MAX(CASE WHEN e.ctype = 'CO2' THEN e.cfull END), 0) AS CO2, "+
+    "COALESCE(MAX(CASE WHEN e.ctype = 'LPG' THEN e.cfull END), 0) AS LPG, "+
+    "COALESCE(MAX(CASE WHEN e.ctype = 'DA' THEN e.cfull END), 0) AS DA, "+
+    "COALESCE(MAX(CASE WHEN e.ctype = 'ARGON' THEN e.cfull END), 0) AS ARGON, "+
+    "COALESCE(MAX(CASE WHEN e.ctype = 'ARGOSHIELD' THEN e.cfull END), 0) AS ARGOSHIELD, "+
+    "COALESCE(MAX(CASE WHEN e.ctype = 'NITROGEN' THEN e.cfull END), 0) AS NITROGEN "+
+    "from MainEntry e where DATE(e.createdAt)=DATE(?1) and (e.isPurchase=false or e.isPurchase is null) "+ 
+    "GROUP BY e.partyName WITH ROLLUP", nativeQuery = true)
+    List<Map<String, Object>> findSaleEntriesByCreatedDate(Date date);
+*/
+        @Query(value = "SELECT e.party_name as partyName, " +
+           "COALESCE(MAX(CASE WHEN e.ctype = 'OXY' THEN e.cfull END), 0) AS OXY, " +
+           "COALESCE(MAX(CASE WHEN e.ctype = 'CO2' THEN e.cfull END), 0) AS CO2, " +
+           "COALESCE(MAX(CASE WHEN e.ctype = 'LPG' THEN e.cfull END), 0) AS LPG, " +
+           "COALESCE(MAX(CASE WHEN e.ctype = 'DA' THEN e.cfull END), 0) AS DA, " +
+           "COALESCE(MAX(CASE WHEN e.ctype = 'ARGON' THEN e.cfull END), 0) AS ARGON, " +
+           "COALESCE(MAX(CASE WHEN e.ctype = 'ARGOSHIELD' THEN e.cfull END), 0) AS ARGOSHIELD, " +
+           "COALESCE(MAX(CASE WHEN e.ctype = 'NITROGEN' THEN e.cfull END), 0) AS NITROGEN " +
+           "FROM main_entry e WHERE DATE(e.created_at) = DATE(?1) " +
+           "AND (e.is_purchase = false OR e.is_purchase IS NULL) " +
+           "GROUP BY e.party_name WITH ROLLUP", nativeQuery = true)
+    List<Map<String, Object>> findSaleEntriesByCreatedDate(Date date);
 
-    @Query("select e from MainEntry e where DATE(e.createdAt)=DATE(?1) order by e.createdAt asc")
-    List<MainEntry> findEntriesByCreatedDate(Date date);
 }
