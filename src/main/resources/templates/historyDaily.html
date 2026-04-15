@@ -67,8 +67,8 @@
     <!-- Summary totals when saleentries exist -->
     <div class="summary" th:if="${saleentries != null and !#lists.isEmpty(saleentries)}">
         <span>Date: <strong th:text="${#dates.format(reportDate,'dd-MM-yyyy')}"></strong></span>
-        <span>Total sale entries: <strong th:text="${#lists.size(saleentries)}"></strong></span>
-        <span>Parties: <strong th:text="${#sets.size(#sets.toSet(saleentries.![partyName]))}"></strong></span>
+        <!--span>Total sale entries: <strong th:text="${#lists.size(saleentries)}"></strong></span-->
+        <span>Parties: <strong th:text="${#sets.size(#sets.toSet(saleentries.![partyName]))-1}"></strong></span>
     </div>
     <div th:if="${saleentries != null and !#lists.isEmpty(saleentries)}">
         <table>

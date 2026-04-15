@@ -526,7 +526,7 @@ public RedirectView deleteEntryPost(
             }
             model.addAttribute("byType", byType);
         } else {
-            /* Default load limited to last 6 months MADHURI
+            /* Default load limited to last 6 months MADHURI - now disabling default load 
                LocalDate today = LocalDate.now();
                LocalDate fromDateRef = today.minusMonths(6);
                Date fromDateDef = Date.from(fromDateRef.atStartOfDay(ZoneId.systemDefault()).toInstant());
@@ -536,16 +536,17 @@ public RedirectView deleteEntryPost(
                 ? mainEntryRepo.getCurrentHoldingSummaryForRange(fromDate, toDate)
                 : mainEntryRepo.getCurrentHoldingSummary(fromDateDef, toDateDef));
 */
-                LocalDate today = LocalDate.now();
+                /*LocalDate today = LocalDate.now();
                 LocalDate sixMonthsAgo = today.minusMonths(6);
 
                 // Converting to java.util.Date
                 Date toDateDef = java.sql.Date.valueOf(today);
-                Date fromDateDef = java.sql.Date.valueOf(sixMonthsAgo);
+                Date fromDateDef = java.sql.Date.valueOf(sixMonthsAgo);*/
 
                 model.addAttribute("holdingSummary", hasRange
                     ? mainEntryRepo.getCurrentHoldingSummaryForRange(fromDate, toDate)
-                    : mainEntryRepo.getCurrentHoldingSummaryForRange(fromDateDef, toDateDef));
+                    : /*mainEntryRepo.getCurrentHoldingSummaryForRange(fromDateDef, toDateDef)*/
+                    java.util.Collections.emptyList());
                 }
         return "historyHolding";
     }
