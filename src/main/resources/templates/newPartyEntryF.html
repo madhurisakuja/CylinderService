@@ -169,7 +169,8 @@ async function saveUom() {
     const csrfToken = document.querySelector('meta[name="_csrf"]').getAttribute('content');
     const csrfHeader = document.querySelector('meta[name="_csrf_header"]').getAttribute('content');
 
-    const resp = await fetch(`/updatePartyUom?partyName=${encodeURIComponent(party)}&uomType=${encodeURIComponent(uom)}`, {method:'POST'});
+    const resp = await fetch(`/updatePartyUom?partyName=${encodeURIComponent(party)}&uomType=${encodeURIComponent(uom)}`, 
+    {method:'POST', headers:{[csrfHeader]:csrfToken} });
     const data = await resp.json();
     const div = document.getElementById('editResult');
     div.style.display = 'block';
@@ -191,12 +192,18 @@ async function confirmDeleteParty() {
     // Get CSRF tokens from the meta tags
     const csrfToken = document.querySelector('meta[name="_csrf"]').getAttribute('content');
     const csrfHeader = document.querySelector('meta[name="_csrf_header"]').getAttribute('content');
-    
+
     if (!confirm('DELETE "' + party + '" permanently?\n\nThis removes:\n  • Party registration\n  • All main entries\n  • All cylinder number records\n  • Account, prices, and labels\n\nThis CANNOT be undone.')) return;
     document.getElementById('deletePartyBtn').disabled = true;
     document.getElementById('deletePartyBtn').textContent = 'Deleting\u2026';
     try {
-        const resp = await fetch('/deleteParty?partyName=' + encodeURIComponent(party), {method:'POST'});
+        const resp = await fetch('/deleteParty?partyName=' + encodeURIComponent(party), {
+            method: 'POST',
+            headers: {
+                [csrfHeader]: csrfToken, // This attaches the X-CSRF-TOKEN
+                'Content-Type': 'application/json'
+            }
+        });
         const data = await resp.json();
         const div = document.getElementById('deleteResult');
         div.style.display = 'block';
