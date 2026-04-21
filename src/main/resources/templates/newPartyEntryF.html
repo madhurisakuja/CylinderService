@@ -3,6 +3,8 @@
 <head>
     <title>Party Management</title>
     <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="_csrf" th:content="${_csrf.token}"/>
+    <meta name="_csrf_header" th:content="${_csrf.headerName}"/>
 <style>
 body{margin:0;font-family:Arial,sans-serif;background:#f4f4f4;}
         .topnav{overflow:hidden;background:#1a1a2e;}
@@ -134,6 +136,17 @@ table{width:100%;border-collapse:collapse;font-size:13px;}
 </div>
 <script th:inline="javascript">
     // 1. Define functions FIRST so they are available immediately
+    function loadEditParty(name) {
+    const row = document.getElementById('editUomRow');
+    if (!name) { row.style.display = 'none'; return; }
+    row.style.display = 'block';
+    
+    // We use a safe check here in case the map failed to build
+    const uom = (typeof partyUomMap !== 'undefined' ? partyUomMap[name] : '') || '';
+    document.getElementById('editUomSelect').value = uom;
+    document.getElementById('editResult').style.display = 'none';
+}
+
     function onDeleteSelect(val) {
         const btn = document.getElementById('deletePartyBtn');
         const warn = document.getElementById('deleteWarn');
@@ -146,19 +159,16 @@ table{width:100%;border-collapse:collapse;font-size:13px;}
 // Thymeleaf will handle the escaping here
 partyUomMap[ [[${p.partyName}]] ] = [[${p.uomType}]];
 /*[/]*/
-function loadEditParty(name) {
-    const row = document.getElementById('editUomRow');
-    if (!name) { row.style.display = 'none'; return; }
-    row.style.display = 'block';
-    const uom = partyUomMap[name] || '';
-    document.getElementById('editUomSelect').value = uom;
-    document.getElementById('editResult').style.display = 'none';
-}
+
 
 async function saveUom() {
     const party = document.getElementById('editPartySelect').value;
     const uom   = document.getElementById('editUomSelect').value;
     if (!party) return;
+    // Get CSRF tokens from the meta tags
+    const csrfToken = document.querySelector('meta[name="_csrf"]').getAttribute('content');
+    const csrfHeader = document.querySelector('meta[name="_csrf_header"]').getAttribute('content');
+
     const resp = await fetch(`/updatePartyUom?partyName=${encodeURIComponent(party)}&uomType=${encodeURIComponent(uom)}`, {method:'POST'});
     const data = await resp.json();
     const div = document.getElementById('editResult');
@@ -178,6 +188,10 @@ async function saveUom() {
 async function confirmDeleteParty() {
     const party = document.getElementById('deletePartySelect').value;
     if (!party) return;
+    // Get CSRF tokens from the meta tags
+    const csrfToken = document.querySelector('meta[name="_csrf"]').getAttribute('content');
+    const csrfHeader = document.querySelector('meta[name="_csrf_header"]').getAttribute('content');
+    
     if (!confirm('DELETE "' + party + '" permanently?\n\nThis removes:\n  • Party registration\n  • All main entries\n  • All cylinder number records\n  • Account, prices, and labels\n\nThis CANNOT be undone.')) return;
     document.getElementById('deletePartyBtn').disabled = true;
     document.getElementById('deletePartyBtn').textContent = 'Deleting\u2026';
