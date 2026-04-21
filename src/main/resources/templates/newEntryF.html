@@ -53,6 +53,10 @@
     <div class="card">
         <div class="top-row">
             <div>
+                <label>Date</label>
+                <input type="date" id="entryDate" th:value="${defaultDate}"/>
+            </div>
+            <div>
                 <label>Party Name</label>
                 <!--input list="partyDatalist" id="partyName" name="partyName" placeholder="Type or select party..." style="width:100%">
                     <option value="">-- Select Party --</option>
@@ -77,10 +81,7 @@
                  </select>
                  
             </div>
-            <div>
-                <label>Date</label>
-                <input type="date" id="entryDate" th:value="${defaultDate}"/>
-            </div>
+            
         </div>
 
         <div class="section-title">Cylinder Entries</div>
@@ -96,7 +97,12 @@
             <div id="result-content"></div>
         </div>
 
-        <button class="btn btn-green" onclick="submitEntry()" style="margin-top:24px; width: 100%;">Submit All Entries</button>
+        <form class="card" onsubmit="event.preventDefault(); submitEntry();">
+            <button type="submit" class="btn btn-green" style="margin-top:24px; width: 100%;">
+                Submit All Entries
+            </button>
+        </form>
+
     </div>
 </div>
 
@@ -163,26 +169,42 @@
         }
         // --- NEW DUPLICATE CHECK END ---
     
-        const resp = await fetch('/newEntryF', {
+        const doFetch = async (forceFlag) => {
+            if (forceFlag) rows.forEach(r => r.force = 'true');
+            const r = await fetch('/newEntryF', {
             method: 'POST',
             headers: {'Content-Type':'application/json', [csrfHeader]: csrfToken},
             body: JSON.stringify(rows)
         });
-        
-        const data = await resp.json();
+            return r.json();
+        };
+
+        let data = await doFetch(false);
+
+        // Server warns about duplicate — ask user to confirm, then resubmit with force flag
+        if (data.duplicate) {
+            const proceed = confirm(data.duplicateMsg + '\n\nClick OK to add entries anyway, or Cancel to abort.');
+            if (!proceed) {
+                submitBtn.disabled = false;
+                submitBtn.textContent = 'Submit All Entries';
+                return;
+            }
+            data = await doFetch(true);
+        }
+
         const box = document.getElementById('result-box');
         const content = document.getElementById('result-content');
         box.style.display = 'block';
     
         let html = '';
-        if (data.saved.length) html += `<div class="msg-success">Saved: ${data.saved.join(', ')}</div>`;
-        if (data.errors.length) html += `<div class="msg-error">Issues: ${data.errors.join('<br/>')}</div>`;
+        if (data.saved && data.saved.length) html += `<div class="msg-success">Saved: ${data.saved.join(', ')}</div>`;
+        if (data.errors && data.errors.length) html += `<div class="msg-error">Issues: ${data.errors.join('<br/>')}</div>`;
         content.innerHTML = html;
     
-        if (data.saved.length && !data.errors.length) {
+        if (data.saved && data.saved.length && (!data.errors || !data.errors.length)) {
             document.getElementById('entryRows').innerHTML = '';
             rowCount=0;
-            addRow(); // Reset with one blank row
+            addRow();
         }
     }
     

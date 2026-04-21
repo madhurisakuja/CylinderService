@@ -93,4 +93,7 @@ public interface MainEntryRepository extends JpaRepository<MainEntry, Long> {
            "GROUP BY e.party_name WITH ROLLUP ORDER BY (e.party_name IS NULL) ASC, e.party_name ASC", nativeQuery = true)
     List<Map<String, Object>> findSaleEntriesByCreatedDate(Date date);
 
+    @Modifying @Transactional
+    @Query("delete from MainEntry e where e.partyName=?1")
+    void deleteAllByPartyName(String partyName);
 }

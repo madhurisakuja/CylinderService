@@ -1,23 +1,38 @@
 <!DOCTYPE html>
 <html xmlns:th="http://www.thymeleaf.org" lang="en">
-<head><title>Party Management</title><meta name="viewport" content="width=device-width,initial-scale=1">
+<head>
+    <title>Party Management</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
 <style>
 body{margin:0;font-family:Arial,sans-serif;background:#f4f4f4;}
-.topnav{overflow:hidden;background:#1a1a2e;}.topnav a{float:left;color:#eee;padding:14px 16px;text-decoration:none;font-size:15px;}
-.topnav a:hover{background:#16213e;color:#04AA6D;}.topnav a.active{background:#04AA6D;color:white;}
-.content{padding:24px;max-width:700px;margin:0 auto;}h2{color:#1a1a2e;}
+        .topnav{overflow:hidden;background:#1a1a2e;}
+        .topnav a{float:left;color:#eee;padding:14px 16px;text-decoration:none;font-size:15px;}
+        .topnav a:hover{background:#16213e;color:#04AA6D;}
+        .topnav a.active{background:#04AA6D;color:white;}
+        .content{padding:24px;max-width:760px;margin:0 auto;}
+        h2{color:#1a1a2e;}
 .card{background:white;border-radius:10px;padding:24px;box-shadow:0 2px 8px rgba(0,0,0,.07);margin-bottom:16px;}
+        .card-title{font-size:13px;font-weight:bold;text-transform:uppercase;letter-spacing:.5px;color:#555;margin-bottom:16px;}
 label{display:block;font-size:13px;font-weight:bold;color:#555;margin-bottom:4px;margin-top:12px;}
+        label:first-of-type{margin-top:0;}
 input[type=text],select{padding:10px 12px;border:1px solid #ccc;border-radius:4px;font-size:14px;width:100%;box-sizing:border-box;}
+        .form-row{display:grid;grid-template-columns:1fr 1fr;gap:16px;}
 .btn{padding:10px 24px;border:none;border-radius:4px;cursor:pointer;font-size:14px;font-weight:bold;margin-top:14px;}
-.btn-green{background:#04AA6D;color:white;}.btn-green:hover{background:#038a57;}
-.msg-success{background:#d4edda;color:#155724;padding:10px;border-radius:4px;margin-bottom:12px;}
-.msg-error{background:#f8d7da;color:#721c24;padding:10px;border-radius:4px;margin-bottom:12px;}
+        .btn-green{background:#04AA6D;color:white;} .btn-green:hover{background:#038a57;}
+        .btn-blue{background:#1a73e8;color:white;} .btn-blue:hover{background:#1557b0;}
+        .btn-red{background:#cc0000;color:white;} .btn-red:hover{background:#990000;}
+        .btn-red:disabled,.btn-green:disabled{background:#aaa;cursor:not-allowed;}
+        .msg-success{background:#d4edda;color:#155724;padding:10px 14px;border-radius:4px;margin-bottom:12px;}
+        .msg-error{background:#f8d7da;color:#721c24;padding:10px 14px;border-radius:4px;margin-bottom:12px;}
 table{width:100%;border-collapse:collapse;font-size:13px;}
-th{background:#04AA6D;color:white;padding:8px 10px;text-align:left;}
-td{padding:8px 10px;border-bottom:1px solid #eee;}
+        th{background:#04AA6D;color:white;padding:8px 12px;text-align:left;}
+        td{padding:8px 12px;border-bottom:1px solid #eee;vertical-align:middle;}
+        tr:last-child td{border-bottom:none;}
 .hint{font-size:12px;color:#888;margin-top:4px;}
-.form-row{display:grid;grid-template-columns:1fr 1fr;gap:16px;}
+        .warn-box{background:#fff3cd;color:#856404;padding:10px 14px;border-radius:4px;
+                  font-size:13px;margin-top:12px;display:none;}
+        #deleteResult,#editResult{margin-top:10px;display:none;}
+        .link{color:#04AA6D;cursor:pointer;font-size:12px;text-decoration:underline;}
 </style>
 </head>
 <body>
@@ -34,16 +49,20 @@ td{padding:8px 10px;border-bottom:1px solid #eee;}
 </div>
 <div class="content">
     <h2>Party Management</h2>
-    <div th:if="${entrySuccess != null and entrySuccess}" class="msg-success">Registered: <strong th:text="${partyName}"></strong></div>
-    <div th:if="${entrySuccess != null and !entrySuccess}" class="msg-error">Duplicate: <strong th:text="${partyName}"></strong></div>
+
+    <div th:if="${entrySuccess != null and entrySuccess}"  class="msg-success">Registered: <strong th:text="${partyName}"></strong></div>
+    <div th:if="${entrySuccess != null and !entrySuccess}" class="msg-error">Duplicate: <strong th:text="${partyName}"></strong> already exists.</div>
+
+    <!-- Register new party -->
     <div class="card">
+        <div class="card-title">Register New Party</div>
         <form th:action="@{/newPartyEntryF}" th:object="${entryParty}" method="post">
             <label>Party Name</label>
             <input type="text" th:field="*{partyName}" placeholder="e.g. SHARMA GAS AGENCY" required/>
-            <p class="hint">For purchase/supplier parties, start the name with "1" (e.g. "1-AIR PRODUCTS").</p>
-            <div class="form-row">
+            <p class="hint">For purchase/supplier parties, start with "1" (e.g. "1-AIR PRODUCTS").</p>
+            <div class="form-row" style="margin-top:12px">
                 <div>
-                    <label>UOM Type <span style="color:#999;font-weight:normal">(optional)</span></label>
+                    <label>UOM Type <span style="font-weight:normal;color:#999">(optional)</span></label>
                     <select th:field="*{uomType}">
                         <option value="">-- None --</option>
                         <option value="NOS">NOS (Numbers)</option>
@@ -55,17 +74,140 @@ td{padding:8px 10px;border-bottom:1px solid #eee;}
             <button type="submit" class="btn btn-green">Register Party</button>
         </form>
     </div>
+
+    <!-- Edit UOM for existing party -->
+    <div class="card">
+        <div class="card-title">Edit Party UOM</div>
+        <label>Party</label>
+        <select id="editPartySelect" onchange="loadEditParty(this.value)">
+            <option value="">-- Select Party --</option>
+            <option th:each="p : ${allParties}" th:value="${p.partyName}"
+                    th:text="${p.partyName}"></option>
+        </select>
+        <div id="editUomRow" style="display:none;margin-top:12px">
+            <label>UOM Type</label>
+            <select id="editUomSelect">
+                <option value="">-- None --</option>
+                <option value="NOS">NOS (Numbers)</option>
+                <option value="M3">M3 (Cubic Metres)</option>
+            </select>
+            <button class="btn btn-blue" onclick="saveUom()">Save UOM</button>
+        </div>
+        <div id="editResult"></div>
+    </div>
+
+    <!-- Delete party -->
+    <div class="card">
+        <div class="card-title">Delete Party</div>
+        <label>Select Party to Delete</label>
+        <select id="deletePartySelect" onchange="onDeleteSelect(this.value)">
+            <option value="">-- Select Party --</option>
+            <option th:each="p : ${allParties}" th:value="${p.partyName}"
+                    th:text="${p.partyName}"></option>
+        </select>
+        <div class="warn-box" id="deleteWarn">
+            ⚠ This permanently deletes the party and <strong>ALL</strong> associated records —
+            entries, cylinder numbers, prices, labels, and account details. This cannot be undone.
+        </div>
+        <button class="btn btn-red" id="deletePartyBtn" onclick="confirmDeleteParty()" disabled>
+            Delete Party &amp; All Records
+        </button>
+        <div id="deleteResult"></div>
+    </div>
+
+    <!-- All parties -->
     <div class="card" th:if="${not #lists.isEmpty(allParties)}">
-        <table>
-            <thead><tr><th>Party Name</th><th>Type</th><th>UOM</th></tr></thead>
+        <div class="card-title">All Registered Parties</div>
+        <table id="allPartiesTable">
+            <thead>
+                <tr><th>Party Name</th><th>Type</th><th>UOM</th></tr>
+            </thead>
             <tbody>
                 <tr th:each="p : ${allParties}">
                     <td th:text="${p.partyName}"></td>
                     <td th:text="${#strings.startsWith(p.partyName,'1') ? 'Purchaser/Supplier' : 'Customer'}"></td>
-                    <td th:text="${p.uomType != null ? p.uomType : '—'}"></td>
+                    <td th:text="${p.uomType != null and !#strings.isEmpty(p.uomType) ? p.uomType : '—'}"></td>
                 </tr>
             </tbody>
         </table>
     </div>
 </div>
-</body></html>
+
+<script th:inline="javascript">
+// Build a map of party → uomType from server data for instant JS lookup
+const partyUomMap = {};
+/*[# th:each="p : ${allParties}"]*/
+partyUomMap[/*[[${p.partyName}]]*/ ''] = /*[[${p.uomType}]]*/ null;
+/*[/]*/
+
+function loadEditParty(name) {
+    const row = document.getElementById('editUomRow');
+    if (!name) { row.style.display = 'none'; return; }
+    row.style.display = 'block';
+    const uom = partyUomMap[name] || '';
+    document.getElementById('editUomSelect').value = uom;
+    document.getElementById('editResult').style.display = 'none';
+}
+
+async function saveUom() {
+    const party = document.getElementById('editPartySelect').value;
+    const uom   = document.getElementById('editUomSelect').value;
+    if (!party) return;
+    const resp = await fetch(`/updatePartyUom?partyName=${encodeURIComponent(party)}&uomType=${encodeURIComponent(uom)}`, {method:'POST'});
+    const data = await resp.json();
+    const div = document.getElementById('editResult');
+    div.style.display = 'block';
+    div.className = data.success ? 'msg-success' : 'msg-error';
+    div.textContent = data.message;
+    // Update table
+    if (data.success) {
+        partyUomMap[party] = uom;
+        document.querySelectorAll('#allPartiesTable tbody tr').forEach(tr => {
+            if (tr.cells[0].textContent.trim() === party)
+                tr.cells[2].textContent = uom || '—';
+        });
+    }
+}
+
+function onDeleteSelect(val) {
+    document.getElementById('deletePartyBtn').disabled = !val;
+    document.getElementById('deleteWarn').style.display = val ? 'block' : 'none';
+}
+
+async function confirmDeleteParty() {
+    const party = document.getElementById('deletePartySelect').value;
+    if (!party) return;
+    if (!confirm('DELETE "' + party + '" permanently?\n\nThis removes:\n  • Party registration\n  • All main entries\n  • All cylinder number records\n  • Account, prices, and labels\n\nThis CANNOT be undone.')) return;
+    document.getElementById('deletePartyBtn').disabled = true;
+    document.getElementById('deletePartyBtn').textContent = 'Deleting\u2026';
+    try {
+        const resp = await fetch('/deleteParty?partyName=' + encodeURIComponent(party), {method:'POST'});
+        const data = await resp.json();
+        const div = document.getElementById('deleteResult');
+        div.style.display = 'block';
+        div.className = data.success ? 'msg-success' : 'msg-error';
+        div.textContent = data.message;
+        if (data.success) {
+            // Remove from all dropdowns and table
+            [document.getElementById('deletePartySelect'),
+             document.getElementById('editPartySelect')].forEach(sel => {
+                const opt = sel.querySelector(`option[value="${CSS.escape(party)}"]`);
+                if (opt) opt.remove();
+            });
+            document.querySelectorAll('#allPartiesTable tbody tr').forEach(tr => {
+                if (tr.cells[0].textContent.trim() === party) tr.remove();
+            });
+            document.getElementById('deleteWarn').style.display = 'none';
+        }
+    } catch(e) {
+        const div = document.getElementById('deleteResult');
+        div.style.display = 'block'; div.className = 'msg-error';
+        div.textContent = 'Network error: ' + e.message;
+    } finally {
+        document.getElementById('deletePartyBtn').disabled = false;
+        document.getElementById('deletePartyBtn').textContent = 'Delete Party & All Records';
+    }
+}
+</script>
+</body>
+</html>

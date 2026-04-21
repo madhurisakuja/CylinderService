@@ -93,6 +93,10 @@ public interface NewCylinderFService extends JpaRepository<MainCylinderEntry, Lo
            "where c.customerName=?1 and DATE(c.date)=DATE(?2) order by c.cylinderNo asc")
     List<Long> findCylinderNumbersByPartyAndDate(String partyName, Date date);
 
+    @Modifying @Transactional
+    @Query("delete from MainCylinderEntry e where e.customerName=?1")
+    void deleteAllByCustomerName(String customerName);
+    
     /** Already-saved cylinder numbers for a specific party+date+ctype+fullType — for preloading the form */
     @Query("select c.cylinderNo from MainCylinderEntry c " +
            "where c.customerName=?1 and DATE(c.date)=DATE(?2) and c.ctype=?3 and c.fullType=?4 " +

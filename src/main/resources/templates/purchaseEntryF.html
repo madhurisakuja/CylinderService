@@ -50,15 +50,15 @@
     <div class="card">
         <div class="top-row">
             <div>
+                <label>Date</label>
+                <input type="date" id="entryDate" th:value="${defaultDate}"/>
+            </div>
+            <div>
                 <label>Purchaser</label>
                 <select id="partyName">
                     <option value="">-- Select Purchaser --</option>
                     <option th:each="p : ${partyNames}" th:value="${p}" th:text="${p}"></option>
                 </select>
-            </div>
-            <div>
-                <label>Date</label>
-                <input type="date" id="entryDate" th:value="${defaultDate}"/>
             </div>
         </div>
         <div class="section-title">Stock Received</div>
@@ -68,7 +68,13 @@
         <div id="rows"></div>
         <button type="button" class="btn btn-outline" onclick="addRow()" style="margin-bottom:20px">+ Add Gas Type</button>
         <div id="result-box"><div id="result-content"></div></div>
-        <button class="btn btn-green" onclick="submitEntry()">Submit Purchase</button>
+        <!--button class="btn btn-green" onclick="submitEntry()">Submit Purchase</button-->
+
+        <form class="card" onsubmit="event.preventDefault(); submitEntry();">
+            <button type="submit" class="btn btn-green" style="margin-top:24px; width: 100%;">
+                Submit Purchase
+            </button>
+        </form>
     </div>
 </div>
 <script th:inline="javascript">

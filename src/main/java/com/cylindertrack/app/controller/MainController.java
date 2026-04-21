@@ -1,6 +1,9 @@
 package com.cylindertrack.app.controller;
 
 import com.cylindertrack.app.model.*;
+import com.cylindertrack.app.model.CylinderLabelRepository;
+import com.cylindertrack.app.model.PartyPriceRepository;
+import com.cylindertrack.app.model.PartyAccountRepository;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
@@ -26,7 +29,6 @@ import jakarta.transaction.Transactional;
 import java.io.IOException;
 import java.text.SimpleDateFormat;
 import java.time.LocalDate;
-import java.util.TimeZone;
 import java.time.ZoneId;
 import java.util.*;
 
@@ -35,10 +37,13 @@ public class MainController {
 
     private static final Logger log = LoggerFactory.getLogger(MainController.class);
 
-    @Autowired private MainEntryRepository    mainEntryRepo;
-    @Autowired private NewCylinderFService    cylinderRepo;
-    @Autowired private PartyNamesRepository   partyNamesRepo;
-    @Autowired private EntryService           entryService;
+    @Autowired private MainEntryRepository         mainEntryRepo;
+    @Autowired private NewCylinderFService         cylinderRepo;
+    @Autowired private PartyNamesRepository        partyNamesRepo;
+    @Autowired private EntryService                entryService;
+    @Autowired private PartyPriceRepository        partyPriceRepository;
+    @Autowired private CylinderLabelRepository     cylinderLabelRepository;
+    @Autowired private PartyAccountRepository      partyAccountRepository;
 
     // ── Login / Home ──────────────────────────────────────────────────────────
 
@@ -75,6 +80,59 @@ public class MainController {
         return new RedirectView("/newPartyEntryF", true);
     }
 
+    /**
+     * Deletes a party and ALL associated records across every table:
+     * party_names, main_entry, cylinder_entries, party_accounts,
+     * cylinder_labels (party-specific), party_prices (party-specific).
+     */
+    /** Update UOM type for an existing party. */
+    @PostMapping("/updatePartyUom")
+    @ResponseBody
+    public Map<String, Object> updatePartyUom(@RequestParam String partyName,
+                                               @RequestParam(required = false) String uomType) {
+        Map<String, Object> resp = new java.util.HashMap<>();
+        try {
+            PartyNames party = partyNamesRepo.findById(partyName).orElse(null);
+            if (party == null) {
+                resp.put("success", false);
+                resp.put("message", "Party not found: " + partyName);
+                return resp;
+            }
+            party.setUomType((uomType != null && !uomType.isBlank()) ? uomType.trim() : null);
+            partyNamesRepo.save(party);
+            resp.put("success", true);
+            resp.put("message", "UOM updated for " + partyName +
+                     " → " + (party.getUomType() != null ? party.getUomType() : "None"));
+        } catch (Exception ex) {
+            resp.put("success", false);
+            resp.put("message", "Error: " + ex.getMessage());
+        }
+        return resp;
+    }
+
+    @PostMapping("/deleteParty")
+    @ResponseBody
+    @jakarta.transaction.Transactional
+    public Map<String, Object> deleteParty(@RequestParam String partyName) {
+        Map<String, Object> resp = new java.util.HashMap<>();
+        try {
+            mainEntryRepo.deleteAllByPartyName(partyName);
+            cylinderRepo.deleteAllByCustomerName(partyName);
+            partyPriceRepository.deleteAllByPartyName(partyName);
+            cylinderLabelRepository.deleteAllByPartyName(partyName);
+            partyAccountRepository.deleteById(partyName);
+            partyNamesRepo.deleteById(partyName);
+            log.info("Deleted party and all records for: {}", partyName);
+            resp.put("success", true);
+            resp.put("message", "Party \"" + partyName + "\" and all associated records deleted.");
+        } catch (Exception ex) {
+            log.error("Error deleting party: {}", partyName, ex);
+            resp.put("success", false);
+            resp.put("message", "Error deleting party: " + ex.getMessage());
+        }
+        return resp;
+    }
+
     // ── New Bulk Sales Entry ───────────────────────────────────────────────────
 
     @GetMapping("/newEntryF")
@@ -108,16 +166,21 @@ public class MainController {
             resp.put("saved", saved); resp.put("errors", errors); return resp;
         }
 
-        // Pre-check: reject the entire batch if an entry already exists for this party+date
+        // Pre-check: warn if entry already exists for this party+date
+        // If rows contain "force":"true", skip the warning and proceed anyway.
         try {
             String partyName = rows.get(0).get("partyName");
             Date   date      = parseDate(rows.get(0).get("date"));
+            boolean force    = "true".equals(rows.get(0).get("force"));
             List<MainEntry> existing = mainEntryRepo.findByPartyAndDate(partyName, date);
-            if (!existing.isEmpty()) {
+            if (!existing.isEmpty() && !force) {
                 String dateStr = new SimpleDateFormat("dd-MM-yyyy").format(date);
-                errors.add("Entry for " + partyName + " on " + dateStr + " already exists. " +
-                            "Delete the entry first if you want to make another entry for this date.");
-                resp.put("saved", saved); resp.put("errors", errors); return resp;
+                resp.put("saved", saved);
+                resp.put("errors", errors);
+                resp.put("duplicate", true);
+                resp.put("duplicateMsg", "Entry for " + partyName + " on " + dateStr +
+                         " already exists. Proceed anyway to add more entries for this date?");
+                return resp;
             }
         } catch (Exception ex) {
             errors.add("Error validating entry: " + ex.getMessage());
@@ -177,16 +240,21 @@ public class MainController {
             resp.put("saved", saved); resp.put("errors", errors); return resp;
         }
 
-        // Pre-check: reject the entire batch if an entry already exists for this party+date
+        // Pre-check: warn if entry already exists for this party+date
+        // If rows contain "force":"true", skip the warning and proceed anyway.
         try {
             String partyName = rows.get(0).get("partyName");
             Date   date      = parseDate(rows.get(0).get("date"));
+            boolean force    = "true".equals(rows.get(0).get("force"));
             List<MainEntry> existing = mainEntryRepo.findByPartyAndDate(partyName, date);
-            if (!existing.isEmpty()) {
+            if (!existing.isEmpty() && !force) {
                 String dateStr = new SimpleDateFormat("dd-MM-yyyy").format(date);
-                errors.add("Entry for " + partyName + " on " + dateStr + " already exists. " +
-                            "Delete the entry first if you want to make another entry for this date.");
-                resp.put("saved", saved); resp.put("errors", errors); return resp;
+                resp.put("saved", saved);
+                resp.put("errors", errors);
+                resp.put("duplicate", true);
+                resp.put("duplicateMsg", "Entry for " + partyName + " on " + dateStr +
+                         " already exists. Proceed anyway to add more entries for this date?");
+                return resp;
             }
         } catch (Exception ex) {
             errors.add("Error validating entry: " + ex.getMessage());

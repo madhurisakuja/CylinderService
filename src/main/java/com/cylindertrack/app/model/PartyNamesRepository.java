@@ -16,7 +16,7 @@ public interface PartyNamesRepository extends JpaRepository<PartyNames, String> 
            "where p.partyName like '1%' order by p.partyName asc")
     List<String> getAllPartyNamesPurchaser();
 
-    @Query("select distinct p.partyName from PartyNames p order by p.partyName asc")
+    @Query("select distinct p.partyName from PartyNames p order by LOWER(p.partyName) asc")
     List<String> getAllPartyNamesAll();
 
     @Query("select p.uomType from PartyNames p where p.partyName = ?1")

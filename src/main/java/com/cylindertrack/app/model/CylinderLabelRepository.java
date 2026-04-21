@@ -24,4 +24,9 @@ public interface CylinderLabelRepository extends JpaRepository<CylinderLabel, Lo
     /** All party-specific overrides */
     @Query("select l from CylinderLabel l where l.partyName is not null order by l.partyName asc, l.gasType asc")
     List<CylinderLabel> findAllOverrides();
+    @org.springframework.data.jpa.repository.Modifying
+    @jakarta.transaction.Transactional
+    @org.springframework.data.jpa.repository.Query("delete from CylinderLabel l where l.partyName=?1")
+    void deleteAllByPartyName(String partyName);
+
 }
