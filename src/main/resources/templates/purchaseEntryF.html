@@ -48,6 +48,38 @@
     <h2>Purchase Entry</h2>
     <div class="info-box">Purchase entries record stock received. Purchaser party names start with "1".</div>
     <div class="card">
+        <form onsubmit="event.preventDefault(); submitEntry();">
+            <div class="top-row">
+                <div>
+                    <label>Date</label>
+                    <input type="date" id="entryDate" th:value="${defaultDate}"/>
+                </div>
+                <div>
+                    <label>Purchaser</label>
+                    <select id="partyName">
+                        <option value="">-- Select Purchaser --</option>
+                        <option th:each="p : ${partyNames}" th:value="${p}" th:text="${p}"></option>
+                    </select>
+                </div>
+            </div>
+    
+            <div class="section-title">Stock Received</div>
+            <div class="row-header">
+                <span>Gas Type</span><span>Full In</span><span>Empty Out</span><span>Remarks</span><span></span>
+            </div>
+            <div id="rows"></div>
+            
+            <button type="button" class="btn btn-outline" onclick="addRow()" style="margin-bottom:20px">+ Add Gas Type</button>
+            
+            <div id="result-box"><div id="result-content"></div></div>
+    
+            <button type="submit" class="btn btn-green" style="margin-top:24px; width: 100%;">
+                Submit Purchase
+            </button>
+        </form>
+    </div>
+
+    <!--div class="card">
         <div class="top-row">
             <div>
                 <label>Date</label>
@@ -68,14 +100,13 @@
         <div id="rows"></div>
         <button type="button" class="btn btn-outline" onclick="addRow()" style="margin-bottom:20px">+ Add Gas Type</button>
         <div id="result-box"><div id="result-content"></div></div>
-        <!--button class="btn btn-green" onclick="submitEntry()">Submit Purchase</button-->
 
         <form class="card" onsubmit="event.preventDefault(); submitEntry();">
             <button type="submit" class="btn btn-green" style="margin-top:24px; width: 100%;">
                 Submit Purchase
             </button>
         </form>
-    </div>
+    </div-->
 </div>
 <script th:inline="javascript">
 const gasTypes = /*[[${gasTypes}]]*/ [];
@@ -90,7 +121,7 @@ function addRow() {
         <input type="number" class="cfull-inp" value="0" min="0"/>
         <input type="number" class="cempty-inp" value="0" min="0"/>
         <input type="text" class="remarks-inp" placeholder="Optional"/>
-        <button class="btn-remove" onclick="this.parentElement.remove()">×</button>
+        <button type="button" class="btn-remove" onclick="this.parentElement.remove()">×</button>
     `;
     document.getElementById('rows').appendChild(div);
 }
