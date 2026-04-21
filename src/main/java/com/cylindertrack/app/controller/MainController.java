@@ -66,7 +66,7 @@ public class MainController {
     @GetMapping("/newPartyEntryF")
     public String newPartyGet(Model model) {
         model.addAttribute("entryParty", new PartyNames());
-        model.addAttribute("allParties", partyNamesRepo.findAll());  // full objects for UOM display
+        model.addAttribute("allParties", partyNamesRepo.findAll(Sort.by(Sort.Order.asc("partyName").ignoreCase())));  // full objects for UOM display
         return "newPartyEntryF";
     }
     @PostMapping("/newPartyEntryF")

@@ -100,7 +100,7 @@ table{width:100%;border-collapse:collapse;font-size:13px;}
     <div class="card">
         <div class="card-title">Delete Party</div>
         <label>Select Party to Delete</label>
-        <select id="deletePartySelect" onchange="onDeleteSelect(this.value)">
+        <select id="deletePartySelect" oninput="onDeleteSelect(this.value)">
             <option value="">-- Select Party --</option>
             <option th:each="p : ${allParties}" th:value="${p.partyName}"
                     th:text="${p.partyName}"></option>
@@ -132,14 +132,20 @@ table{width:100%;border-collapse:collapse;font-size:13px;}
         </table>
     </div>
 </div>
-
 <script th:inline="javascript">
-// Build a map of party → uomType from server data for instant JS lookup
-const partyUomMap = {};
+    // 1. Define functions FIRST so they are available immediately
+    function onDeleteSelect(val) {
+        const btn = document.getElementById('deletePartyBtn');
+        const warn = document.getElementById('deleteWarn');
+        if(btn) btn.disabled = !val;
+        if(warn) warn.style.display = val ? 'block' : 'none';
+    }
+    
+    const partyUomMap = {};
 /*[# th:each="p : ${allParties}"]*/
-partyUomMap[/*[[${p.partyName}]]*/ ''] = /*[[${p.uomType}]]*/ null;
+// Thymeleaf will handle the escaping here
+partyUomMap[ [[${p.partyName}]] ] = [[${p.uomType}]];
 /*[/]*/
-
 function loadEditParty(name) {
     const row = document.getElementById('editUomRow');
     if (!name) { row.style.display = 'none'; return; }
@@ -167,11 +173,6 @@ async function saveUom() {
                 tr.cells[2].textContent = uom || '—';
         });
     }
-}
-
-function onDeleteSelect(val) {
-    document.getElementById('deletePartyBtn').disabled = !val;
-    document.getElementById('deleteWarn').style.display = val ? 'block' : 'none';
 }
 
 async function confirmDeleteParty() {
