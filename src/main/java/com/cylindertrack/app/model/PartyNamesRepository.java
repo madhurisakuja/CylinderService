@@ -9,11 +9,11 @@ import java.util.List;
 public interface PartyNamesRepository extends JpaRepository<PartyNames, String> {
 
     @Query("select distinct p.partyName from PartyNames p " +
-           "where p.partyName not like '1%' order by p.partyName asc")
+           "where p.partyName not like '1%' order by LOWER(p.partyName) asc")
     List<String> getAllPartyNames();
 
     @Query("select distinct p.partyName from PartyNames p " +
-           "where p.partyName like '1%' order by p.partyName asc")
+           "where p.partyName like '1%' order by LOWER(p.partyName) asc")
     List<String> getAllPartyNamesPurchaser();
 
     @Query("select distinct p.partyName from PartyNames p order by LOWER(p.partyName) asc")

@@ -52,6 +52,10 @@
     <div class="card">
         <div class="filter-row">
             <div>
+                <label>Date of Entry</label>
+                <input type="date" id="filterDate" style="width:100%" th:value="${defaultDate}"/>
+            </div>
+            <div>
                 <label>Party</label>
 
                 <!--input list="partyNamesList" 
@@ -68,10 +72,6 @@
                     <option value="">-- Select Party --</option>
                     <option th:each="p : ${partyNames}" th:value="${p}" th:text="${p}"></option>
                 </select>
-            </div>
-            <div>
-                <label>Date of Entry</label>
-                <input type="date" id="filterDate" style="width:100%", value="${defaultDate}"/>
             </div>
             <div>
                 <label>&nbsp;</label>
@@ -327,6 +327,16 @@ function showSlotMessage(slotKey, type, msg) {
     div.textContent = msg;
     body.prepend(div);
 }
+
+// Submit filter on Enter from party or date inputs
+document.addEventListener('keydown', function(e) {
+    if (e.key !== 'Enter') return;
+    const id = document.activeElement ? document.activeElement.id : '';
+    if (id === 'filterParty' || id === 'filterDate') {
+        e.preventDefault();
+        loadEntries();
+    }
+});
 </script>
 </body>
 </html>

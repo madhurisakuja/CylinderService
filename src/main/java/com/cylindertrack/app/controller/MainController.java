@@ -410,9 +410,16 @@ public RedirectView deleteEntryPost(
         all.addAll(partyNamesRepo.getAllPartyNamesPurchaser());
         model.addAttribute("partyNames", all);
         model.addAttribute("gasTypes", Arrays.stream(CylinderTypeF.values()).map(Enum::name).toList());
-        Date defDate = mainEntryRepo.getLatestEntryDate();
+        /*Date defDate = mainEntryRepo.getLatestEntryDate();
         model.addAttribute("defaultDate", defDate != null
-            ? new SimpleDateFormat("yyyy-MM-dd").format(defDate) : "");
+            ? new SimpleDateFormat("yyyy-MM-dd").format(defDate) : "");*/
+
+        Date defDate = mainEntryRepo.getLatestEntryDate();
+        LocalDate today = LocalDate.now();
+        Date todayDate = Date.from(today.atStartOfDay(ZoneId.systemDefault()).toInstant());
+        
+        model.addAttribute("defaultDate", defDate != null
+            ? new SimpleDateFormat("yyyy-MM-dd").format(defDate) : new SimpleDateFormat("yyyy-MM-dd").format(todayDate));
         return "cylinderNumbers";
     }
 

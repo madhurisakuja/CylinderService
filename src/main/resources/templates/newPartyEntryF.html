@@ -208,6 +208,13 @@ async function confirmDeleteParty() {
         document.getElementById('deletePartyBtn').textContent = 'Delete Party & All Records';
     }
 }
+
+// Enter key on edit/delete selects triggers their actions
+document.addEventListener('keydown', function(e) {
+    if (e.key !== 'Enter') return;
+    const id = document.activeElement ? document.activeElement.id : '';
+    if (id === 'editUomSelect') { e.preventDefault(); saveUom(); }
+});
 </script>
 </body>
 </html>
