@@ -113,19 +113,30 @@ async function loadEntries() {
         return;
     }
 
+    // Merge entries with same ctype+status — multiple main_entry rows for the
+    // same party+date+ctype would otherwise create duplicate slotKeys, causing
+    // slotData to be overwritten and saveSlot to only loop up to the last count.
+    const merged = {}; // key: "ctype|status" → {ctype, date, cfull, cempty}
     for (const entry of data.entries) {
-        const fullAtParty  = data.fullAtParty  && data.fullAtParty[entry.ctype]  ? data.fullAtParty[entry.ctype]  : [];
-        const savedFull    = data.savedFull    && data.savedFull[entry.ctype]    ? data.savedFull[entry.ctype]    : [];
-        const savedEmpty   = data.savedEmpty   && data.savedEmpty[entry.ctype]   ? data.savedEmpty[entry.ctype]   : [];
-
+        const kf = `${entry.ctype}|FULL`;
+        const ke = `${entry.ctype}|EMPTY`;
         if (entry.cfull > 0) {
-            area.appendChild(buildSlot(party, entry.date, entry.ctype, 'FULL', entry.cfull,
-                                       savedFull, fullAtParty));
+            if (!merged[kf]) merged[kf] = { ctype: entry.ctype, date: entry.date, count: 0 };
+            merged[kf].count += entry.cfull;
         }
         if (entry.cempty > 0) {
-            area.appendChild(buildSlot(party, entry.date, entry.ctype, 'EMPTY', entry.cempty,
-                                       savedEmpty, fullAtParty));
+            if (!merged[ke]) merged[ke] = { ctype: entry.ctype, date: entry.date, count: 0 };
+            merged[ke].count += entry.cempty;
         }
+    }
+
+    for (const [key, m] of Object.entries(merged)) {
+        const status      = key.endsWith('FULL') ? 'FULL' : 'EMPTY';
+        const fullAtParty = data.fullAtParty && data.fullAtParty[m.ctype] ? data.fullAtParty[m.ctype] : [];
+        const savedNos    = status === 'FULL'
+            ? (data.savedFull  && data.savedFull[m.ctype]  ? data.savedFull[m.ctype]  : [])
+            : (data.savedEmpty && data.savedEmpty[m.ctype] ? data.savedEmpty[m.ctype] : []);
+        area.appendChild(buildSlot(party, m.date, m.ctype, status, m.count, savedNos, fullAtParty));
     }
 }
 
